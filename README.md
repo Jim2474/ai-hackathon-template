@@ -6,6 +6,7 @@
 
 - 🎵 **智能音乐规划**：告诉 AI 你现在的状态，自动生成专属音乐方案
 - 🤖 **私人 AI DJ**：像深夜电台一样，用温柔的声音陪伴你
+- 🎤 **可插拔的 TTS 服务**：支持浏览器原生语音、Fish Audio、MiniMax TTS（自动降级）
 - 🔊 **本地音频播放**：完整的播放列表、自动续播、当前歌曲高亮
 - 📱 **手机端优化**：一体化浅色 UI，优雅、简洁
 - 🛡️ **智能降级**：MiniMax API 失败时自动切换到 Mock 模式
@@ -15,7 +16,7 @@
 - React 19 + Vite
 - Tailwind CSS
 - MiniMax API (可选，用于智能 DJ)
-- 浏览器原生 Speech Synthesis
+- 可插拔 TTS 服务：浏览器原生语音 / Fish Audio / MiniMax TTS
 - 本地音频库（无需后端）
 
 ## 🚀 快速开始
@@ -28,17 +29,30 @@ npm install
 
 ### 配置环境变量（可选）
 
-复制 `.env.local` 并填写你的 MiniMax API Key：
+复制 `.env.local` 并按需配置：
 
 ```bash
-# .env.local
+# MiniMax AI DJ 配置
 VITE_USE_MINIMAX=true
 VITE_MINIMAX_API_KEY=你的APIKey
 VITE_MINIMAX_BASE_URL=https://api.minimaxi.com/v1
 VITE_MINIMAX_MODEL=MiniMax-M2.7
+
+# TTS 语音配置
+VITE_TTS_PROVIDER=browser
+# VITE_TTS_PROVIDER=fish
+# VITE_TTS_PROVIDER=minimax_tts
+
+# Fish Audio 配置
+VITE_FISH_AUDIO_API_KEY=
+VITE_FISH_AUDIO_VOICE_ID=
+
+# MiniMax TTS 配置
+VITE_MINIMAX_TTS_API_KEY=
+VITE_MINIMAX_TTS_VOICE_ID=
 ```
 
-如果不配置 MiniMax，会自动使用 Mock 模式，功能一样完整！
+如果不配置 MiniMax 和 TTS，会自动使用 Mock 模式，功能一样完整！
 
 ### 启动开发服务器
 
@@ -86,6 +100,7 @@ src/
 ├── services/
 │   ├── djPlanner.js        # DJ 方案生成器
 │   ├── minimaxService.js   # MiniMax API 集成
+│   ├── ttsService.js       # 可插拔的 TTS 语音服务
 │   └── apiService.js       # 通用 API 服务
 ├── App.jsx                 # 主应用
 ├── main.jsx                # 入口文件

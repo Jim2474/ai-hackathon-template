@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import ParticleCanvas from './components/ParticleCanvas'
 import { generateSmartDJPlan } from './services/djPlanner'
 import { localAudioLibrary } from './data/localAudioLibrary'
+import { speakDJLine, stopSpeaking, replaySpeaking, getFriendlyProviderName } from './services/ttsService'
 
 const thinkingMessages = [
   '正在理解你的状态...',
@@ -166,47 +167,29 @@ export default function App() {
     }
   }
 
-  const speakOpeningLine = (text) => {
-    if (!window.speechSynthesis) {
+  const speakOpeningLine = async (text) => {
+    setIsSpeaking(true)
+    setPhase('speaking')
+    
+    try {
+      await speakDJLine(text, { rate: 0.9 })
+      setIsSpeaking(false)
       setPhase('plan')
-      return
-    }
-    
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'zh-CN'
-    utterance.rate = 0.9
-    
-    utterance.onstart = () => {
-      setIsSpeaking(true)
-    }
-    
-    utterance.onend = () => {
+    } catch (error) {
+      console.error('TTS failed:', error)
       setIsSpeaking(false)
       setPhase('plan')
     }
-    
-    utterance.onerror = () => {
-      setIsSpeaking(false)
-      setPhase('plan')
-    }
-    
-    window.speechSynthesis.speak(utterance)
   }
 
   const replayDJ = () => {
     if (!currentPlan) return
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
     setPhase('speaking')
     speakOpeningLine(currentPlan.openingLine)
   }
 
-  const stopSpeaking = () => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
+  const handleStopSpeaking = () => {
+    stopSpeaking()
     setIsSpeaking(false)
     if (phase === 'speaking') {
       setPhase('plan')
@@ -219,9 +202,7 @@ export default function App() {
     setThinkingIndex(0)
     setAudioError('')
     
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
+    stopSpeaking()
     if (audioElement) {
       audioElement.pause()
     }
@@ -231,12 +212,8 @@ export default function App() {
       setCurrentPlan(plan)
       setPlaybackTime(0)
       
-      if (window.speechSynthesis) {
-        setPhase('speaking')
-        speakOpeningLine(plan.openingLine)
-      } else {
-        setPhase('plan')
-      }
+      setPhase('speaking')
+      speakOpeningLine(plan.openingLine)
     } catch (error) {
       console.error('Generate plan failed:', error)
     }
@@ -333,9 +310,7 @@ export default function App() {
   }
 
   const handleReset = () => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
+    stopSpeaking()
     if (audioElement) {
       audioElement.pause()
       audioElement.onloadeddata = null
@@ -623,6 +598,9 @@ export default function App() {
                         <span className="text-xs font-semibold" style={{ color: '#7C5CFF' }}>MOODWAVE DJ</span>
                         <span className="text-xs" style={{ color: '#9CA3AF' }}>·</span>
                         <span className="text-xs font-mono" style={{ color: '#9CA3AF' }}>Opening</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(124,92,255,0.1)', color: '#7C5CFF' }}>
+                          {getFriendlyProviderName()}
+                        </span>
                       </div>
                       
                       {/* Control Buttons */}
@@ -636,7 +614,7 @@ export default function App() {
                         </button>
                         {phase === 'speaking' && (
                           <button
-                            onClick={stopSpeaking}
+                            onClick={handleStopSpeaking}
                             className="px-2 py-1 rounded-full text-xs font-medium transition-all hover:bg-[rgba(239,68,68,0.1)]"
                             style={{ color: '#EF4444' }}
                           >
