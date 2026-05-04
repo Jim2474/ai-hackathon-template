@@ -26,7 +26,7 @@ function InputArea({ onGenerate }) {
     <div className="w-full max-w-2xl">
       <div className="text-center mb-8">
         <h1 className="text-5xl font-light mb-2 bg-gradient-to-r from-accent-blue via-accent-purple to-accent-pink bg-clip-text text-transparent">
-          Moodwave
+          Claudio
         </h1>
         <p className="text-gray-400 text-lg">AI 情境音乐规划师</p>
       </div>

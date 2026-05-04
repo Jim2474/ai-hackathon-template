@@ -1,4 +1,4 @@
-export const localAudioLibrary = [
+const baseLocalAudioLibrary = [
   {
     id: "focus-01",
     title: "Focus 01",
@@ -132,3 +132,67 @@ export const localAudioLibrary = [
     bpm: 0
   }
 ];
+
+const modeBackgrounds = {
+  focus: {
+    mood: "steady, low distraction, focused",
+    texture: "lofi / light beat / soft electronic",
+    story: "这类声音以稳定节奏和低干扰铺底为主，适合学习、写作或需要慢慢进入状态的场景。",
+    whyItFits: "节奏稳定、情绪不过度起伏，不会频繁打断思路。"
+  },
+  calm: {
+    mood: "soft, reassuring, low energy",
+    texture: "soft keys / warm ambience / gentle rhythm",
+    story: "这类声音更像一层柔和的背景，不急着推进情绪，适合焦虑或压力较高时慢慢缓下来。",
+    whyItFits: "能量较低、声音边缘柔和，可以先把情绪接住。"
+  },
+  sleep: {
+    mood: "slow, quiet, minimal",
+    texture: "ambient / meditation / low pulse",
+    story: "这类声音以慢速和留白为主，适合作为睡前或夜晚放松的背景。",
+    whyItFits: "速度慢、低刺激，不会把注意力重新拉得太紧。"
+  },
+  energy: {
+    mood: "bright, rhythmic, forward",
+    texture: "percussion / sport beat / rock pulse",
+    story: "这类声音有更明确的节奏推动感，适合运动、提神或需要启动身体的时候。",
+    whyItFits: "节奏更靠前，能量更高，但仍然保持可控，不会过度吵闹。"
+  },
+  nature: {
+    mood: "open, airy, grounding",
+    texture: "nature / ambience / environmental sound",
+    story: "这类声音更强调空间感和环境感，适合离开屏幕、放松呼吸或做轻度背景声。",
+    whyItFits: "没有强旋律压力，能给注意力留出一点空间。"
+  }
+};
+
+const userNotes = {
+  focus: "适合低阻力启动学习时使用。",
+  calm: "适合情绪需要慢慢放稳的时候。",
+  sleep: "适合睡前把声音放得很轻。",
+  energy: "适合不想太吵但需要提神的时候。",
+  nature: "适合想离开屏幕、听一点空间感的时候。"
+};
+
+function enrichTrack(track, index) {
+  const mode = track.mode || "focus";
+  const day = String(10 + index).padStart(2, "0");
+
+  return {
+    ...track,
+    addedAt: `2025-12-${day}`,
+    likedAt: index % 2 === 0 ? `2026-01-${String(5 + index).padStart(2, "0")}` : undefined,
+    lastPlayedAt: `2026-04-${String(8 + index).padStart(2, "0")}`,
+    playCount: 6 + index * 3,
+    userNote: userNotes[mode] || "适合需要一点声音陪伴的时候。",
+    songBackground: modeBackgrounds[mode] || modeBackgrounds.focus,
+    source: "Local Demo",
+    sourceType: "local",
+    license: "Demo audio for hackathon use",
+    externalUrl: "",
+    coverUrl: "",
+    playable: true
+  };
+}
+
+export const localAudioLibrary = baseLocalAudioLibrary.map(enrichTrack);

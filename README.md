@@ -7,15 +7,17 @@
 - 🎵 **智能音乐规划**：告诉 AI 你现在的状态，自动生成专属音乐方案
 - 🤖 **私人 AI DJ**：像深夜电台一样，用温柔的声音陪伴你
 - 🎤 **可插拔的 TTS 服务**：支持浏览器原生语音、Fish Audio、MiniMax TTS（自动降级）
+- ☁️ **网易云主音源**：AI 自动生成搜索策略，自动从网易云寻找可播放歌曲
 - 🔊 **本地音频播放**：完整的播放列表、自动续播、当前歌曲高亮
 - 📱 **手机端优化**：一体化浅色 UI，优雅、简洁
-- 🛡️ **智能降级**：MiniMax API 失败时自动切换到 Mock 模式
+- 🛡️ **智能降级**：MiniMax / 网易云失败时自动切换到本地 Demo 音源
 
 ## 🛠️ 技术栈
 
 - React 19 + Vite
 - Tailwind CSS
 - MiniMax API (可选，用于智能 DJ)
+- NeteaseCloudMusicApi（本地 Docker，用于网易云搜索和播放 URL）
 - 可插拔 TTS 服务：浏览器原生语音 / Fish Audio / MiniMax TTS
 - 本地音频库（无需后端）
 
@@ -52,7 +54,35 @@ VITE_MINIMAX_TTS_API_KEY=
 VITE_MINIMAX_TTS_VOICE_ID=
 ```
 
-如果不配置 MiniMax 和 TTS，会自动使用 Mock 模式，功能一样完整！
+如果不配置 MiniMax，会自动使用本地 Demo 模式，功能一样完整，最适合黑客松现场稳定演示。
+
+### 启动网易云音乐 API（可选）
+
+如果你想让 Moodwave 自动使用网易云作为主音源，请先打开 Docker Desktop，然后在终端运行：
+
+```bash
+docker run -d --name netease-api -p 3000:3000 binaryify/netease_cloud_music_api
+```
+
+启动后，打开浏览器访问：
+
+```text
+http://localhost:3000/search?keywords=周杰伦
+```
+
+如果页面显示一大段 JSON 数据，说明网易云 API 已经启动成功。Moodwave 会自动调用它，不需要你手动搜索歌曲。
+
+前端默认会请求：
+
+```text
+http://localhost:3000
+```
+
+如果你以后换了端口，可以在 `.env.local` 里加：
+
+```bash
+VITE_NETEASE_API_BASE_URL=http://localhost:3000
+```
 
 ### 启动开发服务器
 
@@ -60,7 +90,13 @@ VITE_MINIMAX_TTS_VOICE_ID=
 npm run dev
 ```
 
-访问 http://localhost:5175/
+启动后，终端会显示一个本地地址，通常是：
+
+```bash
+http://localhost:5173/
+```
+
+如果 5173 被占用，Vite 会自动换成 5174、5175 等地址。以终端显示的地址为准。
 
 ## 📖 使用说明
 
@@ -78,12 +114,29 @@ npm run dev
 
 AI 会像深夜电台主播一样，用温柔的声音解释为什么选这些歌
 
+如果浏览器语音没有成功，页面仍然会展示完整方案，可以继续点击播放音乐。
+
 ### 3. 播放音乐
 
-点击播放按钮，开始享受你的专属音乐时光
+点击底部圆形播放按钮，开始享受你的专属音乐时光
 - 自动播放下一首
 - 当前歌曲高亮显示
 - 可以暂停和继续
+
+### 验证成功
+
+看到下面这些结果，就说明项目跑通了：
+
+1. 页面出现 Moodwave 输入框。
+2. 点击「学习 / 睡眠 / 运动 / 安抚」任意按钮后，会出现音乐方案。
+3. 页面出现 DJ 开场白、推荐理由、歌曲列表和播放阶段。
+4. 点击底部圆形播放按钮后，能听到本地音乐，当前歌曲会高亮。
+5. 如果语音或音乐失败，页面会显示提示，不会白屏。
+6. 如果已启动网易云 API，输入「我想睡前放松 30 分钟」后，会看到系统提示正在网易云寻找声音，并自动生成播放列表。
+7. 页面不会显示搜索工具或试听按钮，只显示电台聊天、当前播放歌曲和 Up next。
+8. 如果网易云不可用，会看到 fallback 提示，并自动切回本地 Demo 音源继续播放。
+9. 输入「下一首」「声音小点」「别说话了」这类简单控制语句，会直接控制播放器，不会重新生成一套歌单。
+10. 会员登录后也只能播放你的账号有权限的歌曲；如果版权受限或网易云没有返回完整 URL，页面会显示提示或 fallback。
 
 ## 📁 项目结构
 
@@ -91,6 +144,7 @@ AI 会像深夜电台主播一样，用温柔的声音解释为什么选这些�
 src/
 ├── components/
 │   ├── InputArea.jsx       # 输入区组件
+│   ├── NeteaseSearchPanel.jsx # 网易云搜索验证组件
 │   ├── PlanDisplay.jsx     # 方案展示组件
 │   └── ParticleCanvas.jsx  # 粒子效果组件
 ├── data/
@@ -100,6 +154,10 @@ src/
 ├── services/
 │   ├── djPlanner.js        # DJ 方案生成器
 │   ├── minimaxService.js   # MiniMax API 集成
+│   ├── musicOrchestrator.js # 网易云主音源 + AI DJ 编排层
+│   ├── neteaseApi.js       # 网易云音乐 API 封装
+│   ├── neteaseService.js   # 网易云 playlist 构建服务
+│   ├── planNormalizer.js   # 统一整理 AI / Mock 方案格式
 │   ├── ttsService.js       # 可插拔的 TTS 语音服务
 │   └── apiService.js       # 通用 API 服务
 ├── App.jsx                 # 主应用
@@ -158,11 +216,12 @@ public/
 
 ## 📋 下一步计划（可选）
 
-- [ ] 接入真实音乐 API（网易云、Spotify 等）
-- [ ] 用户历史记录
-- [ ] 分享功能
-- [ ] 音量控制和进度条
-- [ ] 自定义音频上传
+- [x] 接入网易云 API 主流程：AI 自动生成搜索词，系统自动搜歌并组成播放列表
+- [x] Chat + Radio Player：用对话流呈现 DJ 消息、系统状态和当前播放
+- [x] 自然语言控制雏形：支持「下一首」「声音小点」「只放音乐」等本地快速控制
+- [ ] 强化 Song Story：结合歌词、收藏时间、播放次数和备注生成更像电台的单曲故事
+- [ ] Mood Profile：从使用历史中总结长期音乐偏好和 DJ 语气偏好
+- [ ] 歌单导入和播放终端：支持 Apple Music / Spotify / 网易云 CSV，后续探索音箱和 DLNA/UPnP
 
 ## 👥 开发者
 
@@ -179,4 +238,4 @@ npm install
 npm run dev
 ```
 
-打开浏览器访问 http://localhost:5175/，享受你的私人 AI 电台！🎵
+打开浏览器访问终端显示的本地地址，享受你的私人 AI 电台！🎵
