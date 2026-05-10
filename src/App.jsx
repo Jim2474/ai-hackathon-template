@@ -63,8 +63,8 @@ function SoundWaves({ isPlaying, isPlanning, isSpeaking }) {
             className="w-0.5 rounded-full"
             style={{
               height: `${Math.max(3, height)}px`,
-              background: isSpeaking ? '#7C5CFF' : '#111217',
-              opacity: isPlaying || isSpeaking ? 0.72 : 0.24
+              background: isSpeaking ? '#A78BFA' : '#E5E7EB',
+              opacity: isPlaying || isSpeaking ? 0.65 : 0.20
             }}
           />
         )
@@ -961,7 +961,7 @@ export default function App() {
                       <button
                         key={track.id || index}
                         onClick={() => playTrackByIndex(index)}
-                        className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-all hover:bg-white"
+                        className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-all"
                         style={{
                           background: index === currentTrackIndex ? 'rgba(124,92,255,0.12)' : 'transparent',
                           boxShadow: index === currentTrackIndex ? '0 6px 16px rgba(124,92,255,0.15)' : 'none'
@@ -1016,7 +1016,7 @@ export default function App() {
                       className={`h-1.5 w-1.5 rounded-full ${isPlayingState ? 'animate-pulse' : ''}`}
                       style={{ background: currentTrack ? '#A7F3D0' : '#737782' }}
                     />
-                    <span className="text-[10px] font-semibold tracking-[0.16em]" style={{ color: '#A7F3D0' }}>
+                    <span className="text-[10px] font-semibold tracking-[0.16em]" style={{ color: '#6EE7B7' }}>
                       {isPlayingState ? 'ON AIR' : phase === 'paused' ? 'PAUSED' : 'READY'}
                     </span>
                   </div>
@@ -1083,8 +1083,8 @@ export default function App() {
                         className="flex-1 rounded-full transition-colors"
                         style={{
                           height: `${height}px`,
-                          background: isActive ? '#A7F3D0' : 'rgba(255,255,255,0.18)',
-                          opacity: isActive ? 0.95 : 0.82
+                          background: isActive ? '#6EE7B7' : 'rgba(255,255,255,0.10)',
+                          opacity: isActive ? 0.85 : 0.60
                         }}
                       />
                     )
