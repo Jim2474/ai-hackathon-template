@@ -9,7 +9,7 @@ const ParticleCanvas = () => {
 
     const Sketch = (p) => {
       let particles = []
-      const particleCount = 20
+      const particleCount = 30
 
       class Particle {
         constructor() {
@@ -20,8 +20,8 @@ const ParticleCanvas = () => {
           this.y = p.random(p.height)
           this.vx = p.random(-0.1, 0.1)
           this.vy = p.random(-0.1, 0.1)
-          this.size = p.random(0.8, 1.8)
-          this.alpha = p.random(10, 30)
+          this.size = p.random(1.2, 3.0)
+          this.alpha = p.random(25, 65)
           this.noiseOffset = p.random(1000)
         }
         update() {
@@ -38,7 +38,7 @@ const ParticleCanvas = () => {
         }
         draw() {
           p.noStroke()
-          p.fill(90, 100, 150, this.alpha)
+          p.fill(140, 160, 220, this.alpha)
           p.ellipse(this.x, this.y, this.size)
         }
       }

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import NeteaseLoginPanel from './components/NeteaseLoginPanel'
 import ParticleCanvas from './components/ParticleCanvas'
 import { getSourceLabel } from './services/audioSourceService'
-import { createLocalFallbackSession, createMoodwaveSession } from './services/musicOrchestrator'
+import { createMoodwaveSession } from './services/musicOrchestrator'
 import { speakDJLine, stopSpeaking } from './services/ttsService'
 import { fadeVolume } from './utils/audioUtils'
 
@@ -477,11 +477,11 @@ export default function App() {
     try {
       addChatMessage({
         type: 'system',
-        text: 'Moodwave 正在理解你的状态...'
+        text: 'Claudio 正在理解你的状态...'
       })
       addChatMessage({
         type: 'system',
-        text: '正在网易云中寻找适合的声音...'
+        text: 'Claudio 正在网易云中寻找适合的声音...'
       })
 
       const plan = await createMoodwaveSession(cleanedInput)
@@ -515,38 +515,12 @@ export default function App() {
       } catch (error) {
         console.error('Intro music failed:', error)
         if (plan.source?.includes('netease')) {
-          const fallbackPlan = createLocalFallbackSession(cleanedInput, 'NetEase audio playback failed, switching to local library.')
-          setCurrentPlan(fallbackPlan)
-          planRef.current = fallbackPlan
-          setTrackTime(0)
-          setTrackDuration(FALLBACK_TRACK_DURATION)
-          setCurrentTrackIndex(0)
-          setFailedTracks(new Set())
-          ;(fallbackPlan.chatMessages || []).forEach(message => addChatMessage(message))
-
-          const fallbackTrack = fallbackPlan.tracks?.[0]
-          const fallbackOpeningId = addChatMessage({
-            type: 'dj',
-            text: fallbackPlan.openingLine
-          })
-          addTrackChatMessages(fallbackTrack)
-
-          await playTrack(0, {
-            plan: fallbackPlan,
-            startVolume: 0,
-            targetVolume: INTRO_VOLUME,
-            fadeDuration: INTRO_FADE_MS,
-            phaseAfterStart: 'intro'
-          })
-
-          if (introSessionRef.current === sessionId) {
-            speakOpeningLine(fallbackPlan.openingLine, sessionId, fallbackOpeningId)
-          }
-          return
+          setAudioError('网易云歌单已生成，但浏览器没有自动播放。请点底部播放按钮继续。')
+          setPhase('paused')
+        } else {
+          setAudioError('背景音乐暂时没有自动播放成功，请点底部播放按钮继续。')
+          setPhase('intro')
         }
-
-        setAudioError('背景音乐暂时没有自动播放成功，请点底部播放按钮继续。')
-        setPhase('intro')
       }
 
       if (introSessionRef.current === sessionId) {
@@ -832,35 +806,36 @@ export default function App() {
   }
 
   return (
-    <div className="relative h-screen w-full overflow-hidden font-sans" style={{ background: '#05070F' }}>
+    <div className="relative h-screen w-full overflow-hidden font-sans" style={{ background: '#0A0C18' }}>
       <div className="pointer-events-none absolute inset-0">
         <div
           className="absolute inset-0"
           style={{
             background: `
-              radial-gradient(ellipse at 12% 12%, rgba(34, 211, 238, 0.18), transparent 58%),
-              radial-gradient(ellipse at 88% 88%, rgba(124, 92, 255, 0.15), transparent 58%),
-              radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.35), transparent 62%)
+              radial-gradient(ellipse at 12% 12%, rgba(34, 211, 238, 0.30), transparent 55%),
+              radial-gradient(ellipse at 88% 88%, rgba(124, 92, 255, 0.28), transparent 55%),
+              radial-gradient(ellipse at 50% 30%, rgba(99, 102, 241, 0.12), transparent 50%),
+              radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.20), transparent 62%)
             `
           }}
         />
         <div
-          className="absolute inset-0 opacity-[0.025]"
+          className="absolute inset-0 opacity-[0.06]"
           style={{
-            backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)',
-            backgroundSize: '26px 26px'
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.5) 0.8px, transparent 0.8px)',
+            backgroundSize: '22px 22px'
           }}
         />
       </div>
 
       <ParticleCanvas />
 
-      <div className="relative z-10 flex h-full w-full items-center justify-center p-4">
+      <div className="relative z-10 flex h-full w-full items-center justify-center p-3 sm:p-4">
         <div
-          className="flex h-[700px] w-[430px] max-w-[calc(100vw-24px)] flex-col overflow-hidden"
+          className="flex h-[min(760px,calc(100vh-24px))] w-[460px] max-w-[calc(100vw-18px)] flex-col overflow-hidden"
           style={{
-            borderRadius: '36px',
-            background: 'linear-gradient(180deg, #FAF8F3 0%, #F7F5EF 100%)',
+            borderRadius: '34px',
+            background: 'linear-gradient(180deg, #FBFAF6 0%, #F4F1EA 100%)',
             border: '1px solid rgba(255,255,255,0.35)',
             boxShadow: '0 30px 90px rgba(0,0,0,0.45), 0 0 80px rgba(124,92,255,0.12)'
           }}
@@ -881,7 +856,7 @@ export default function App() {
                   <div className="mt-1 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ background: getStatusDotColor() }} />
                     <span className="text-[11px] font-medium" style={{ color: '#6B7280' }}>
-                      {getStatusText()}
+                      {getStatusText()} · Private AI DJ
                     </span>
                   </div>
                 </div>
@@ -917,7 +892,7 @@ export default function App() {
 
           <main
             ref={chatFeedRef}
-            className="flex-1 space-y-3 overflow-y-auto px-6 pb-3 pt-2"
+            className="flex-1 space-y-3 overflow-y-auto px-5 pb-4 pt-2 sm:px-6"
             style={{ backgroundImage: 'radial-gradient(rgba(17,24,39,0.035) 0.6px, transparent 0.6px)', backgroundSize: '13px 13px' }}
           >
             {chatMessages.map(renderChatMessage)}
@@ -950,7 +925,7 @@ export default function App() {
           </main>
 
           <footer
-            className="shrink-0 px-5 pb-4 pt-3"
+            className="shrink-0 px-4 pb-4 pt-3 sm:px-5"
             style={{
               background: 'rgba(250,248,243,0.96)',
               borderTop: '1px solid rgba(17,24,39,0.06)',
@@ -961,12 +936,12 @@ export default function App() {
               <div className="mb-2">
                 <button
                   onClick={() => setIsPlaylistOpen(prev => !prev)}
-                  className="mb-2 flex w-full items-center justify-between rounded-2xl px-3.5 py-2.5 text-left text-xs font-medium"
-                  style={{ background: '#FFFFFF', color: '#4B5563', border: '1px solid rgba(17,24,39,0.05)', boxShadow: '0 6px 18px rgba(17,24,39,0.04)' }}
+                  className="mb-2 flex w-full items-center justify-between rounded-2xl px-3.5 py-2 text-left text-xs font-medium"
+                  style={{ background: 'rgba(255,255,255,0.76)', color: '#4B5563', border: '1px solid rgba(17,24,39,0.05)' }}
                 >
                   <span className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#7C5CFF' }} />
-                    <span>Up next · {currentPlan.tracks.length} tracks</span>
+                    <span>Up next · {currentPlan.tracks.length} tracks · {currentPlan.sourceType === 'netease' ? 'NetEase' : 'Local'}</span>
                   </span>
                   <span className="text-[10px]" style={{ color: '#9CA3AF' }}>
                     {isPlaylistOpen ? 'Hide' : 'Show'}
@@ -1026,22 +1001,27 @@ export default function App() {
             )}
 
             <section
-              className="rounded-[22px] px-3.5 py-3"
-              style={{ background: '#FFFFFF', border: '1px solid rgba(17,24,39,0.05)', boxShadow: '0 10px 26px rgba(17,24,39,0.07)' }}
+              className="rounded-[24px] px-3.5 py-3"
+              style={{ background: '#111217', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 18px 34px rgba(17,24,39,0.22)' }}
             >
-              <div className="mb-2.5 flex items-center justify-between gap-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="mb-0.5 flex items-center gap-2">
+                  <div className="mb-1 flex items-center gap-2">
                     <span
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ background: currentTrack ? getStatusDotColor() : '#D1D5DB' }}
+                      className={`h-1.5 w-1.5 rounded-full ${isPlayingState ? 'animate-pulse' : ''}`}
+                      style={{ background: currentTrack ? '#A7F3D0' : '#737782' }}
                     />
-                    <p className="truncate text-sm font-semibold" style={{ color: '#111217' }}>
-                      {currentTrack?.title || 'No wave yet'}
+                    <span className="text-[10px] font-semibold tracking-[0.16em]" style={{ color: '#A7F3D0' }}>
+                      {isPlayingState ? 'ON AIR' : phase === 'paused' ? 'PAUSED' : 'READY'}
+                    </span>
+                  </div>
+                  <div className="mb-0.5 flex items-center gap-2">
+                    <p className="truncate text-sm font-semibold" style={{ color: '#FFFFFF' }}>
+                      {currentTrack?.title || 'Claudio is waiting'}
                     </p>
                   </div>
-                  <p className="truncate pl-3.5 text-[11px]" style={{ color: '#8A8D95' }}>
-                    {currentTrack ? `${currentTrack.artist} · ${currentTrack.phase || currentTrack.mode || 'Moodwave'} · ${getSourceLabel(currentTrack)}` : 'Tell Moodwave how you feel'}
+                  <p className="truncate text-[11px]" style={{ color: '#A8ADB7' }}>
+                    {currentTrack ? `${currentTrack.artist} · ${currentTrack.phase || currentTrack.mode || 'Claudio'} · ${getSourceLabel(currentTrack)}` : 'Tell Claudio how you feel'}
                   </p>
                 </div>
 
@@ -1050,7 +1030,7 @@ export default function App() {
                     onClick={playPreviousTrack}
                     disabled={!currentPlan}
                     className="flex h-8 w-8 items-center justify-center rounded-full text-lg disabled:opacity-30"
-                    style={{ color: '#111217', background: 'rgba(17,24,39,0.04)' }}
+                    style={{ color: '#F9FAFB', background: 'rgba(255,255,255,0.09)' }}
                     aria-label="Previous track"
                   >
                     ‹
@@ -1059,7 +1039,7 @@ export default function App() {
                     onClick={handlePlayPause}
                     disabled={!currentPlan}
                     className="flex h-9 w-9 items-center justify-center rounded-full text-white transition-transform hover:scale-105 disabled:opacity-30"
-                    style={{ background: '#111217' }}
+                    style={{ background: '#7C5CFF', boxShadow: '0 10px 22px rgba(124,92,255,0.32)' }}
                     aria-label={isPlayingState ? 'Pause' : 'Play'}
                   >
                     {isPlayingState ? (
@@ -1076,7 +1056,7 @@ export default function App() {
                     onClick={playNextTrack}
                     disabled={!currentPlan}
                     className="flex h-8 w-8 items-center justify-center rounded-full text-lg disabled:opacity-30"
-                    style={{ color: '#111217', background: 'rgba(17,24,39,0.04)' }}
+                    style={{ color: '#F9FAFB', background: 'rgba(255,255,255,0.09)' }}
                     aria-label="Next track"
                   >
                     ›
@@ -1085,10 +1065,10 @@ export default function App() {
               </div>
 
               <div className="mb-2.5 flex items-center gap-2">
-                <span className="w-8 text-[10px] font-mono" style={{ color: '#8A8D95' }}>
+                <span className="w-8 text-[10px] font-mono" style={{ color: '#A8ADB7' }}>
                   {formatPlaybackTime(trackTime)}
                 </span>
-                <div className="flex h-8 flex-1 items-center gap-0.5 overflow-hidden rounded-full px-2" style={{ background: '#F2F3F5' }}>
+                <div className="flex h-8 flex-1 items-center gap-0.5 overflow-hidden rounded-full px-2" style={{ background: 'rgba(255,255,255,0.08)' }}>
                   {Array.from({ length: 44 }).map((_, index) => {
                     const isActive = progressPercent >= (index / 43) * 100
                     const height = 5 + Math.abs(Math.sin(index * 0.54)) * 13
@@ -1098,20 +1078,20 @@ export default function App() {
                         className="flex-1 rounded-full transition-colors"
                         style={{
                           height: `${height}px`,
-                          background: isActive ? '#111217' : '#D6D8DD',
+                          background: isActive ? '#A7F3D0' : 'rgba(255,255,255,0.18)',
                           opacity: isActive ? 0.95 : 0.82
                         }}
                       />
                     )
                   })}
                 </div>
-                <span className="w-8 text-right text-[10px] font-mono" style={{ color: '#8A8D95' }}>
+                <span className="w-8 text-right text-[10px] font-mono" style={{ color: '#A8ADB7' }}>
                   {formatPlaybackTime(trackDuration)}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[10px]" style={{ color: '#8A8D95' }}>Vol</span>
+                <span className="text-[10px]" style={{ color: '#A8ADB7' }}>Vol</span>
                 <input
                   type="range"
                   min="0"
@@ -1119,16 +1099,16 @@ export default function App() {
                   step="0.01"
                   value={musicVolume}
                   onChange={handleVolumeChange}
-                  className="h-1 flex-1 accent-[#111217]"
+                  className="h-1 flex-1 accent-[#A7F3D0]"
                 />
-                <span className="w-7 text-right text-[10px] font-mono" style={{ color: '#8A8D95' }}>
+                <span className="w-7 text-right text-[10px] font-mono" style={{ color: '#A8ADB7' }}>
                   {Math.round(musicVolume * 100)}
                 </span>
                 {currentPlan && (
                   <button
                     onClick={replayDJ}
                     className="rounded-full px-2 py-1 text-[10px] font-medium"
-                    style={{ background: 'rgba(124,92,255,0.08)', color: '#7C5CFF' }}
+                    style={{ background: 'rgba(255,255,255,0.1)', color: '#FFFFFF' }}
                   >
                     Replay
                   </button>
@@ -1137,7 +1117,7 @@ export default function App() {
                   <button
                     onClick={handleStopSpeaking}
                     className="rounded-full px-2 py-1 text-[10px] font-medium"
-                    style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444' }}
+                    style={{ background: 'rgba(239,68,68,0.18)', color: '#FCA5A5' }}
                   >
                     Stop
                   </button>
@@ -1148,7 +1128,7 @@ export default function App() {
             <div className="mt-2 flex gap-2">
               <input
                 type="text"
-                placeholder="告诉 Moodwave 你现在的状态，或直接调整音乐…"
+                placeholder="告诉 Claudio 你现在的状态，或直接调整音乐…"
                 className="min-w-0 flex-1 rounded-xl px-3 py-2.5 text-xs shadow-sm focus:outline-none"
                 style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#1F2937' }}
                 value={userInput}
@@ -1186,7 +1166,7 @@ export default function App() {
                   {currentPlan.reason}
                 </p>
                 <button onClick={handleReset} className="ml-3 shrink-0 text-[10px] font-medium" style={{ color: '#6B7280' }}>
-                  Reset
+                  New wave
                 </button>
               </div>
             )}
