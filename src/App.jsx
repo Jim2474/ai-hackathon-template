@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import NeteaseLoginPanel from './components/NeteaseLoginPanel'
 import ParticleCanvas from './components/ParticleCanvas'
+import GlassPanel from './components/GlassPanel'
 import { getSourceLabel } from './services/audioSourceService'
 import { createMoodwaveSession } from './services/musicOrchestrator'
 import { speakDJLine, stopSpeaking } from './services/ttsService'
@@ -831,13 +832,13 @@ export default function App() {
       <ParticleCanvas />
 
       <div className="relative z-10 flex h-full w-full items-center justify-center p-3 sm:p-4">
-        <div
+        <GlassPanel
+          preset="card"
           className="flex h-[min(760px,calc(100vh-24px))] w-[460px] max-w-[calc(100vw-18px)] flex-col overflow-hidden"
           style={{
-            borderRadius: '34px',
-            background: 'linear-gradient(180deg, #FBFAF6 0%, #F4F1EA 100%)',
-            border: '1px solid rgba(255,255,255,0.35)',
-            boxShadow: '0 30px 90px rgba(0,0,0,0.45), 0 0 80px rgba(124,92,255,0.12)'
+            background: 'linear-gradient(180deg, rgba(15,18,35,0.72) 0%, rgba(10,12,28,0.82) 100%)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            boxShadow: '0 30px 90px rgba(0,0,0,0.45), 0 0 60px rgba(124,92,255,0.15)',
           }}
         >
           <header className="shrink-0 px-6 pb-3 pt-5">
@@ -845,30 +846,31 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <div
                   className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white"
-                  style={{ background: 'linear-gradient(135deg, #111217, #7C5CFF)' }}
+                  style={{ background: 'linear-gradient(135deg, #7C5CFF, #22D3EE)' }}
                 >
                   C
                 </div>
                 <div>
-                  <p className="text-lg font-semibold tracking-[0.06em]" style={{ color: '#1F2937' }}>
+                  <p className="text-lg font-semibold tracking-[0.06em]" style={{ color: '#F3F4F6' }}>
                     Claudio
                   </p>
                   <div className="mt-1 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ background: getStatusDotColor() }} />
-                    <span className="text-[11px] font-medium" style={{ color: '#6B7280' }}>
+                    <span className="text-[11px] font-medium" style={{ color: '#9CA3AF' }}>
                       {getStatusText()} · Private AI DJ
                     </span>
                   </div>
                 </div>
               </div>
-              <span className="text-xs font-mono font-semibold" style={{ color: '#1F2937' }}>
+              <span className="text-xs font-mono font-semibold" style={{ color: '#D1D5DB' }}>
                 {currentTime}
               </span>
             </div>
 
-            <div
+            <GlassPanel
+              preset="bubble"
               className="rounded-2xl px-3 py-2"
-              style={{ background: 'rgba(255,255,255,0.68)', border: '1px solid rgba(17,24,39,0.05)' }}
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <div className="mb-1.5 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap gap-1.5">
@@ -876,18 +878,18 @@ export default function App() {
                     <span
                       key={item}
                       className="rounded-full px-2.5 py-1 text-[10px] font-medium"
-                      style={{ background: '#FFFFFF', color: '#737782', border: '1px solid rgba(17,24,39,0.05)' }}
+                      style={{ background: 'rgba(255,255,255,0.08)', color: '#D1D5DB', border: '1px solid rgba(255,255,255,0.06)' }}
                     >
                       {item}
                     </span>
                   ))}
                 </div>
-                <span className="shrink-0 text-[10px] font-medium" style={{ color: '#9CA3AF' }}>
+                <span className="shrink-0 text-[10px] font-medium" style={{ color: '#6B7280' }}>
                   {phase === 'intro' ? 'DJ live' : phase === 'playing' ? 'On air' : phase === 'planning' ? '...' : 'Radio ready'}
                 </span>
               </div>
               <SoundWaves isPlaying={phase === 'playing'} isPlanning={phase === 'planning'} isSpeaking={phase === 'intro'} />
-            </div>
+            </GlassPanel>
           </header>
 
           <main
@@ -1171,7 +1173,7 @@ export default function App() {
               </div>
             )}
           </footer>
-        </div>
+        </GlassPanel>
       </div>
     </div>
   )
