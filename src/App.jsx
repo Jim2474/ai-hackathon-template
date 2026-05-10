@@ -932,9 +932,8 @@ export default function App() {
           <footer
             className="shrink-0 px-4 pb-4 pt-3 sm:px-5"
             style={{
-              background: 'rgba(250,248,243,0.96)',
-              borderTop: '1px solid rgba(17,24,39,0.06)',
-              boxShadow: '0 -18px 35px rgba(17,24,39,0.05)'
+              background: 'rgba(255,255,255,0.04)',
+              borderTop: '1px solid rgba(255,255,255,0.06)',
             }}
           >
             {currentPlan?.tracks?.length > 0 && (
@@ -942,7 +941,7 @@ export default function App() {
                 <button
                   onClick={() => setIsPlaylistOpen(prev => !prev)}
                   className="mb-2 flex w-full items-center justify-between rounded-2xl px-3.5 py-2 text-left text-xs font-medium"
-                  style={{ background: 'rgba(255,255,255,0.76)', color: '#4B5563', border: '1px solid rgba(17,24,39,0.05)' }}
+                  style={{ background: 'rgba(255,255,255,0.06)', color: '#D1D5DB', border: '1px solid rgba(255,255,255,0.06)' }}
                 >
                   <span className="flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#7C5CFF' }} />
@@ -956,7 +955,7 @@ export default function App() {
                 {isPlaylistOpen && (
                   <div
                     className="mb-2 max-h-36 space-y-1.5 overflow-y-auto rounded-2xl p-1.5"
-                    style={{ background: 'rgba(255,255,255,0.78)', border: '1px solid rgba(17,24,39,0.05)' }}
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}
                   >
                     {currentPlan.tracks.map((track, index) => (
                       <button
@@ -964,32 +963,32 @@ export default function App() {
                         onClick={() => playTrackByIndex(index)}
                         className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-all hover:bg-white"
                         style={{
-                          background: index === currentTrackIndex ? '#FFFFFF' : 'transparent',
-                          boxShadow: index === currentTrackIndex ? '0 6px 16px rgba(124,92,255,0.09)' : 'none'
+                          background: index === currentTrackIndex ? 'rgba(124,92,255,0.12)' : 'transparent',
+                          boxShadow: index === currentTrackIndex ? '0 6px 16px rgba(124,92,255,0.15)' : 'none'
                         }}
                       >
                         <span
                           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
                           style={{
-                            background: index === currentTrackIndex ? '#111217' : 'rgba(17,24,39,0.05)',
-                            color: index === currentTrackIndex ? '#FFFFFF' : '#8A8D95'
+                            background: index === currentTrackIndex ? 'rgba(124,92,255,0.30)' : 'rgba(255,255,255,0.06)',
+                            color: index === currentTrackIndex ? '#FFFFFF' : '#9CA3AF'
                           }}
                         >
                           {index === currentTrackIndex ? 'Now' : index + 1}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold" style={{ color: '#111217' }}>
+                          <p className="truncate text-xs font-semibold" style={{ color: '#F3F4F6' }}>
                             {track.title}
                           </p>
-                          <p className="truncate text-[11px]" style={{ color: '#8A8D95' }}>
+                          <p className="truncate text-[11px]" style={{ color: '#9CA3AF' }}>
                             {track.artist} · {track.phase || track.mode}
                           </p>
                         </div>
                         <span
                           className="rounded-full px-2 py-1 text-[10px] font-medium"
                           style={{
-                            background: index === currentTrackIndex ? 'rgba(124,92,255,0.1)' : 'rgba(17,24,39,0.05)',
-                            color: index === currentTrackIndex ? '#7C5CFF' : '#8A8D95'
+                            background: index === currentTrackIndex ? 'rgba(124,92,255,0.20)' : 'rgba(255,255,255,0.06)',
+                            color: index === currentTrackIndex ? '#A78BFA' : '#9CA3AF'
                           }}
                         >
                           {getSourceLabel(track)}
@@ -1005,9 +1004,10 @@ export default function App() {
               </div>
             )}
 
-            <section
+            <GlassPanel
+              preset="player"
               className="rounded-[24px] px-3.5 py-3"
-              style={{ background: '#111217', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 18px 34px rgba(17,24,39,0.22)' }}
+              style={{ background: 'rgba(17,18,23,0.75)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 18px 34px rgba(0,0,0,0.22)' }}
             >
               <div className="mb-2 flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -1113,7 +1113,7 @@ export default function App() {
                   <button
                     onClick={replayDJ}
                     className="rounded-full px-2 py-1 text-[10px] font-medium"
-                    style={{ background: 'rgba(255,255,255,0.1)', color: '#FFFFFF' }}
+                    style={{ background: 'rgba(255,255,255,0.08)', color: '#E5E7EB' }}
                   >
                     Replay
                   </button>
@@ -1122,20 +1122,20 @@ export default function App() {
                   <button
                     onClick={handleStopSpeaking}
                     className="rounded-full px-2 py-1 text-[10px] font-medium"
-                    style={{ background: 'rgba(239,68,68,0.18)', color: '#FCA5A5' }}
+                    style={{ background: 'rgba(239,68,68,0.15)', color: '#FCA5A5' }}
                   >
                     Stop
                   </button>
                 )}
               </div>
-            </section>
+            </GlassPanel>
 
             <div className="mt-2 flex gap-2">
               <input
                 type="text"
                 placeholder="告诉 Claudio 你现在的状态，或直接调整音乐…"
                 className="min-w-0 flex-1 rounded-xl px-3 py-2.5 text-xs shadow-sm focus:outline-none"
-                style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#1F2937' }}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: '#F3F4F6' }}
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleGenerate(userInput)}
@@ -1157,7 +1157,7 @@ export default function App() {
                     key={item.text}
                     onClick={() => handleGenerate(item.input)}
                     className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                    style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#6B7280' }}
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: '#D1D5DB' }}
                   >
                     {item.text}
                   </button>
@@ -1167,10 +1167,10 @@ export default function App() {
 
             {currentPlan && (
               <div className="mt-2 flex items-center justify-between px-1">
-                <p className="truncate text-[10px]" style={{ color: '#9CA3AF' }}>
+                <p className="truncate text-[10px]" style={{ color: '#6B7280' }}>
                   {currentPlan.reason}
                 </p>
-                <button onClick={handleReset} className="ml-3 shrink-0 text-[10px] font-medium" style={{ color: '#6B7280' }}>
+                <button onClick={handleReset} className="ml-3 shrink-0 text-[10px] font-medium" style={{ color: '#9CA3AF' }}>
                   New wave
                 </button>
               </div>
