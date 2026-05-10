@@ -197,7 +197,7 @@ export default function App() {
     const pattern = new RegExp(`(${highlights.join('|')})`, 'g')
     return text.split(pattern).map((part, i) =>
       highlights.includes(part) ? (
-        <span key={i} className="rounded-md bg-[#A7F3D0] px-1.5 py-0.5 text-[#065F46]">
+        <span key={i} className="rounded-md px-1.5 py-0.5" style={{ background: 'rgba(167,243,208,0.18)', color: '#6EE7B7' }}>
           {part}
         </span>
       ) : part
@@ -750,12 +750,13 @@ export default function App() {
     if (message.type === 'user') {
       return (
         <div key={message.id} className="flex justify-end">
-          <div
+          <GlassPanel
+            preset="bubble"
             className="max-w-[82%] rounded-2xl rounded-tr-md px-4 py-3 text-sm leading-relaxed"
-            style={{ background: '#EDE9FE', color: '#312E81' }}
+            style={{ background: 'rgba(124,92,255,0.18)', border: '1px solid rgba(124,92,255,0.20)' }}
           >
-            {message.text}
-          </div>
+            <span style={{ color: '#E0D4FF' }}>{message.text}</span>
+          </GlassPanel>
         </div>
       )
     }
@@ -765,7 +766,7 @@ export default function App() {
         <div key={message.id} className="flex justify-center">
           <span
             className="rounded-full px-3 py-1 text-[11px] font-medium"
-            style={{ background: 'rgba(17,24,39,0.06)', color: '#7A7F89' }}
+            style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}
           >
             {message.text}
           </span>
@@ -778,21 +779,21 @@ export default function App() {
 
     return (
       <div key={message.id} className="flex justify-start">
-        <div
+        <GlassPanel
+          preset="bubble"
           className="max-w-[88%] rounded-2xl rounded-tl-md px-4 py-3 text-sm leading-relaxed transition-all"
           style={{
-            background: isTrackStory ? '#F3F0E8' : '#FFFFFF',
-            color: '#1F2937',
-            border: isActive ? '1px solid rgba(124,92,255,0.36)' : '1px solid rgba(17,24,39,0.05)',
-            boxShadow: isActive ? '0 10px 24px rgba(124,92,255,0.14)' : '0 4px 14px rgba(17,24,39,0.04)'
+            background: isTrackStory ? 'rgba(139,120,80,0.10)' : 'rgba(255,255,255,0.06)',
+            border: isActive ? '1px solid rgba(124,92,255,0.36)' : '1px solid rgba(255,255,255,0.06)',
+            boxShadow: isActive ? '0 10px 24px rgba(124,92,255,0.14)' : 'none',
           }}
         >
           <div className="mb-1 flex items-center gap-2">
-            <span className="text-[11px] font-semibold" style={{ color: '#6B7280' }}>
+            <span className="text-[11px] font-semibold" style={{ color: '#9CA3AF' }}>
               Claudio
             </span>
             {isTrackStory && (
-              <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: '#FFFFFF', color: '#8A8D95' }}>
+              <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: 'rgba(255,255,255,0.08)', color: '#9CA3AF' }}>
                 Track note
               </span>
             )}
@@ -800,8 +801,10 @@ export default function App() {
               <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: '#7C5CFF' }} />
             )}
           </div>
-          {highlightKeywords(message.text, currentPlan?.highlights || [])}
-        </div>
+          <span style={{ color: '#E5E7EB' }}>
+            {highlightKeywords(message.text, currentPlan?.highlights || [])}
+          </span>
+        </GlassPanel>
       </div>
     )
   }
@@ -895,7 +898,7 @@ export default function App() {
           <main
             ref={chatFeedRef}
             className="flex-1 space-y-3 overflow-y-auto px-5 pb-4 pt-2 sm:px-6"
-            style={{ backgroundImage: 'radial-gradient(rgba(17,24,39,0.035) 0.6px, transparent 0.6px)', backgroundSize: '13px 13px' }}
+            style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.02) 0.6px, transparent 0.6px)', backgroundSize: '13px 13px' }}
           >
             {chatMessages.map(renderChatMessage)}
 
@@ -907,7 +910,7 @@ export default function App() {
               <div className="flex justify-start">
                 <div
                   className="rounded-2xl rounded-tl-md px-4 py-3"
-                  style={{ background: '#FFFFFF', color: '#6B7280', border: '1px solid rgba(17,24,39,0.05)' }}
+                  style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF', border: '1px solid rgba(255,255,255,0.06)' }}
                 >
                   <TypingDots />
                 </div>
@@ -918,7 +921,7 @@ export default function App() {
               <div className="flex justify-center">
                 <span
                   className="max-w-[88%] rounded-full px-3 py-1 text-[11px]"
-                  style={{ background: 'rgba(245,158,11,0.12)', color: '#92400E' }}
+                  style={{ background: 'rgba(245,158,11,0.15)', color: '#FCD34D' }}
                 >
                   {audioError || speechError}
                 </span>
