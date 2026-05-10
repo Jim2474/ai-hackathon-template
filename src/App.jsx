@@ -1,20 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import NeteaseLoginPanel from './components/NeteaseLoginPanel'
-import ParticleCanvas from './components/ParticleCanvas'
+import NeteaseLibraryPanel from './components/NeteaseLibraryPanel'
 import GlassPanel from './components/GlassPanel'
-import { GlassSettingsProvider } from './components/GlassSettings'
+import { GlassSettingsProvider, useGlassSettings } from './components/GlassSettings'
 import GlassSettingsPanel from './components/GlassSettingsPanel'
 import { getSourceLabel } from './services/audioSourceService'
 import { createMoodwaveSession } from './services/musicOrchestrator'
 import { speakDJLine, stopSpeaking } from './services/ttsService'
 import { fadeVolume } from './utils/audioUtils'
-
-const quickInputs = [
-  { text: '学习', input: '我要学习 2 小时' },
-  { text: '睡眠', input: '我要睡前放松 30 分钟' },
-  { text: '运动', input: '我要运动 1 小时' },
-  { text: '安抚', input: '我现在有点焦虑' }
-]
 
 const INTRO_VOLUME = 0.15
 const NORMAL_VOLUME = 0.7
@@ -41,32 +34,46 @@ function TypingDots() {
 }
 
 function SoundWaves({ isPlaying, isPlanning, isSpeaking }) {
-  const bars = 28
+  const bars = 54
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
-    if (!isPlaying && !isPlanning && !isSpeaking) return
-    const interval = setInterval(() => setTick(t => t + 1), isSpeaking ? 70 : 120)
+    const interval = setInterval(() => setTick(t => t + 1), isSpeaking ? 62 : isPlaying ? 86 : 160)
     return () => clearInterval(interval)
   }, [isPlaying, isPlanning, isSpeaking])
 
   return (
-    <div className="flex h-7 items-end justify-center gap-0.5">
+    <div
+      className="relative flex h-12 items-center justify-center gap-[3px] overflow-hidden rounded-2xl px-4"
+      style={{
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08))',
+        maskImage: 'linear-gradient(90deg, transparent, #000 13%, #000 87%, transparent)',
+      }}
+    >
       {Array.from({ length: bars }).map((_, i) => {
-        let height = 4
+        const active = isPlaying || isPlanning || isSpeaking
+        let height = 7 + Math.sin(i * 0.48) * 3
         if (isPlaying || isSpeaking) {
-          height = 9 + Math.sin(i * 0.6 + tick * 0.3) * 7 + Math.sin(i * 0.2) * 5
+          height = 14 + Math.sin(i * 0.58 + tick * 0.24) * 12 + Math.sin(i * 0.19 + tick * 0.12) * 7
         } else if (isPlanning) {
-          height = 5 + Math.sin(Date.now() / 300 + i) * 4
+          height = 11 + Math.sin(i * 0.5 + tick * 0.18) * 9
         }
+
+        const distance = Math.abs(i - bars / 2) / (bars / 2)
+        const opacity = active ? 0.92 - distance * 0.44 : 0.42 - distance * 0.18
+
         return (
           <div
             key={i}
-            className="w-0.5 rounded-full"
+            className="w-[3px] rounded-full transition-[height,opacity,background-color] duration-200"
             style={{
-              height: `${Math.max(3, height)}px`,
-              background: isSpeaking ? '#A78BFA' : '#E5E7EB',
-              opacity: isPlaying || isSpeaking ? 0.65 : 0.20
+              height: `${Math.max(5, height)}px`,
+              background: isSpeaking
+                ? 'linear-gradient(180deg, #1f2330, #7C5CFF)'
+                : active
+                  ? 'linear-gradient(180deg, #171820, #22D3EE)'
+                  : 'rgba(31,35,48,0.42)',
+              opacity,
             }}
           />
         )
@@ -78,6 +85,119 @@ function SoundWaves({ isPlaying, isPlanning, isSpeaking }) {
 function getCurrentTime() {
   const now = new Date()
   return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
+const fallbackAlbumTiles = [
+  'linear-gradient(135deg, #f4c5a8, #c8b8e0)',
+  'linear-gradient(135deg, #a7e5d3, #a8c8e8)',
+  'linear-gradient(135deg, #e8b8c4, #f4c5a8)',
+  'linear-gradient(135deg, #d7c5ff, #8fd8d2)',
+  'linear-gradient(135deg, #f6d365, #fda085)',
+  'linear-gradient(135deg, #9face6, #74ebd5)',
+  'linear-gradient(135deg, #fbc2eb, #a6c1ee)',
+  'linear-gradient(135deg, #ffecd2, #fcb69f)',
+  'linear-gradient(135deg, #84fab0, #8fd3f4)',
+  'linear-gradient(135deg, #cfd9df, #e2ebf0)',
+  'linear-gradient(135deg, #fad0c4, #ffd1ff)',
+  'linear-gradient(135deg, #a1c4fd, #c2e9fb)',
+]
+
+function getTrackCoverUrl(track) {
+  return (
+    track?.coverUrl ||
+    track?.raw?.album?.picUrl ||
+    track?.raw?.album?.blurPicUrl ||
+    track?.raw?.al?.picUrl ||
+    track?.raw?.picUrl ||
+    ''
+  )
+}
+
+function AlbumWallBackground({ tracks = [], currentTrack = null }) {
+  const { settings } = useGlassSettings()
+  const coverTracks = tracks
+    .map(track => ({ ...track, coverUrl: getTrackCoverUrl(track) }))
+    .filter(track => track.coverUrl)
+  const singleCoverUrl = getTrackCoverUrl(currentTrack) || coverTracks[0]?.coverUrl || ''
+
+  if (settings.albumBackgroundMode === 'single' && singleCoverUrl) {
+    return (
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div
+          className="absolute -inset-12"
+          style={{
+            background: `center / cover url("${singleCoverUrl}")`,
+            filter: 'blur(24px) saturate(0.92) contrast(0.92)',
+            opacity: 0.82,
+            transform: 'scale(1.1)',
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(246,242,235,0.34), rgba(226,232,238,0.30)), radial-gradient(circle at 50% 22%, rgba(255,255,255,0.28), transparent 44%)',
+          }}
+        />
+      </div>
+    )
+  }
+
+  const tiles = Array.from({ length: 36 }).map((_, index) => {
+    const track = coverTracks[index % Math.max(coverTracks.length, 1)]
+    return {
+      id: `${track?.id || 'fallback'}-${index}`,
+      coverUrl: track?.coverUrl,
+      gradient: fallbackAlbumTiles[index % fallbackAlbumTiles.length],
+    }
+  })
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div
+        className="absolute -inset-16 grid grid-cols-6 gap-3 sm:grid-cols-9"
+        style={{
+          filter: 'blur(14px) saturate(0.92) contrast(0.94)',
+          opacity: coverTracks.length > 0 ? 0.86 : 0.78,
+          transform: 'scale(1.1) rotate(-3deg)',
+        }}
+      >
+        {tiles.map(tile => (
+          <div
+            key={tile.id}
+            className="aspect-square rounded-[28px]"
+            style={{
+              background: tile.coverUrl
+                ? `center / cover url("${tile.coverUrl}")`
+                : `
+                  radial-gradient(circle at 30% 28%, rgba(255,255,255,0.42), transparent 22%),
+                  radial-gradient(circle at 72% 70%, rgba(20,24,34,0.22), transparent 26%),
+                  ${tile.gradient}
+                `,
+            }}
+          />
+        ))}
+      </div>
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(246,242,235,0.32), rgba(226,232,238,0.30)), radial-gradient(circle at 50% 18%, rgba(255,255,255,0.30), transparent 45%)',
+        }}
+      />
+      <div
+        className="absolute inset-0 opacity-[0.12]"
+        style={{
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.9) 0.8px, transparent 0.8px)',
+          backgroundSize: '24px 24px',
+        }}
+      />
+    </div>
+  )
+}
+
+function textScore(text = '') {
+  return Array.from(String(text)).reduce((sum, char) => sum + char.charCodeAt(0), 0)
 }
 
 export default function App() {
@@ -104,6 +224,7 @@ export default function App() {
   const [activeMessageId, setActiveMessageId] = useState(null)
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false)
   const [isDjVoiceEnabled, setIsDjVoiceEnabled] = useState(true)
+  const [isNeteaseLibraryOpen, setIsNeteaseLibraryOpen] = useState(false)
 
   const audioRef = useRef(null)
   const planRef = useRef(null)
@@ -174,20 +295,6 @@ export default function App() {
     }
   }
 
-  const getSourceBadges = () => {
-    if (!currentPlan) return ['MiniMax', 'NetEase', 'Local fallback']
-
-    const badges = []
-    if (currentPlan.djSource === 'minimax') badges.push('MiniMax DJ')
-    if (currentPlan.searchPlanSource === 'minimax') badges.push('MiniMax Search')
-    if (currentPlan.djSource === 'mock') badges.push('Mock DJ')
-    if (currentPlan.source?.includes('netease')) badges.push('NetEase')
-    if (currentPlan.source?.includes('local')) badges.push('Local fallback')
-    if (!isDjVoiceEnabled) badges.push('Voice off')
-    if (badges.length === 0) badges.push('Demo Audio')
-    return badges
-  }
-
   const addChatMessage = (message) => {
     const id = message.id || `${message.type}-${Date.now()}-${Math.random().toString(16).slice(2)}`
     setChatMessages(prev => [...prev, { ...message, id }])
@@ -206,6 +313,36 @@ export default function App() {
     )
   }
 
+  const buildLocalSongStory = (track) => {
+    const title = track.title || '这首歌'
+    const artist = track.artist || '这位歌手'
+    const album = track.album && track.album !== '未知专辑' ? track.album : ''
+    const position = currentTrackIndex + 1
+    const sourceLabel = getSourceLabel(track)
+    const variants = [
+      `现在接进来的是 ${title}${artist ? `，${artist}` : ''}。我把它放在第 ${position} 首，是想让这段声音换一个角度贴近你。`,
+      `${title} 这一首会更像一段留白。${artist} 的声音不急着解释什么，只是把房间里的情绪轻轻托起来。`,
+      `我们换到 ${title}。${album ? `它来自「${album}」，` : ''}我想让它在这里把刚才那段节奏稍微展开一点。`,
+      `这一首是 ${title}。我从 ${sourceLabel} 里把它挑出来，不是为了打断你，而是让电台的呼吸换一口气。`,
+      `${artist} 的 ${title} 适合放在这一刻。它不会把注意力抢走，只会在背景里慢慢把状态铺平。`,
+    ]
+    return variants[textScore(`${title}-${artist}`) % variants.length]
+  }
+
+  const buildLibraryOpeningLine = (label, count, firstTrack) => {
+    const playlistName = label || '这组歌'
+    const firstTitle = firstTrack?.title || '第一首歌'
+    const firstArtist = firstTrack?.artist || ''
+    const variants = [
+      `「${playlistName}」已经排好，先从 ${firstTitle}${firstArtist ? ` · ${firstArtist}` : ''} 开始。音乐会先靠前一点，我的声音只做轻轻的提示。`,
+      `我把「${playlistName}」整理成 ${count} 首可以直接播放的声音。第一首交给 ${firstTitle}，先让节奏把空间打开。`,
+      `现在切到你的「${playlistName}」。${firstTitle} 先接上来，像电台开机前的一口呼吸，慢一点，不抢你。`,
+      `Claudio 已经准备好这组网易云歌曲。我们先听 ${firstTitle}，其余的我会顺着这一首的气质接下去。`,
+    ]
+
+    return variants[textScore(`${playlistName}-${firstTitle}-${count}`) % variants.length]
+  }
+
   const getTrackStoryText = (track) => {
     if (!track) return '我会先把声音放低一点。你不用急着进入状态，我们让音乐先把房间铺开。'
     const tagText = Array.isArray(track.tags) ? track.tags.join('、') : ''
@@ -213,6 +350,9 @@ export default function App() {
 
     if (track.songIntro) {
       return [track.songIntro, track.personalReason].filter(Boolean).join(' ')
+    }
+    if (track.sourceType === 'netease' || track.source === 'netease') {
+      return buildLocalSongStory(track)
     }
     if (mode.includes('sleep') || tagText.includes('sleep')) {
       return `现在这首是 ${track.title}。它很轻，速度不急，我把它放在这里，是想让你的思绪一点点降下来。`
@@ -230,12 +370,12 @@ export default function App() {
   }
 
   const addTrackChatMessages = (track) => {
-    if (!track) return
+    if (!track) return null
     addChatMessage({
       type: 'system',
       text: `Now playing · ${track.title}`
     })
-    addChatMessage({
+    return addChatMessage({
       type: 'track_story',
       text: getTrackStoryText(track)
     })
@@ -294,6 +434,17 @@ export default function App() {
     } finally {
       await finishDJIntro(sessionId)
     }
+  }
+
+  const speakTrackStory = (track, sessionId, messageId = null) => {
+    if (!track) return
+
+    if (!isDjVoiceEnabled) {
+      finishDJIntro(sessionId)
+      return
+    }
+
+    speakOpeningLine(getTrackStoryText(track), sessionId, messageId)
   }
 
   const replayDJ = async () => {
@@ -632,12 +783,24 @@ export default function App() {
         const latestPlan = planRef.current || plan
         if (latestPlan?.tracks?.length) {
           const nextIndex = (index + 1) % latestPlan.tracks.length
+          const nextTrack = latestPlan.tracks[nextIndex]
+          const sessionId = introSessionRef.current + 1
+          introSessionRef.current = sessionId
+          setIsSpeaking(false)
+          setActiveMessageId(null)
+          setSpeechError('')
+          const storyId = addTrackChatMessages(nextTrack)
           playTrack(nextIndex, {
             plan: latestPlan,
-            startVolume: musicVolume,
-            targetVolume: musicVolume,
-            phaseAfterStart: 'playing'
-          })
+            startVolume: 0,
+            targetVolume: INTRO_VOLUME,
+            fadeDuration: INTRO_FADE_MS,
+            phaseAfterStart: 'intro'
+          }).then(() => {
+            if (introSessionRef.current === sessionId) {
+              speakTrackStory(nextTrack, sessionId, storyId)
+            }
+          }).catch(() => {})
         }
       }
     })
@@ -689,18 +852,24 @@ export default function App() {
     if (!plan?.tracks?.length) return
 
     const nextIndex = (index + plan.tracks.length) % plan.tracks.length
-    introSessionRef.current += 1
+    const sessionId = introSessionRef.current + 1
+    introSessionRef.current = sessionId
     stopSpeaking()
     setIsSpeaking(false)
     setActiveMessageId(null)
     setSpeechError('')
-    addTrackChatMessages(plan.tracks[nextIndex])
+    const nextTrack = plan.tracks[nextIndex]
+    const storyId = addTrackChatMessages(nextTrack)
     playTrack(nextIndex, {
       plan,
       startVolume: 0,
-      targetVolume: musicVolume,
-      fadeDuration: 450,
-      phaseAfterStart: 'playing'
+      targetVolume: INTRO_VOLUME,
+      fadeDuration: INTRO_FADE_MS,
+      phaseAfterStart: 'intro'
+    }).then(() => {
+      if (introSessionRef.current === sessionId) {
+        speakTrackStory(nextTrack, sessionId, storyId)
+      }
     }).catch(() => {})
   }
 
@@ -714,6 +883,77 @@ export default function App() {
     const plan = planRef.current
     if (!plan?.tracks?.length) return
     playTrackByIndex((currentTrackIndex - 1 + plan.tracks.length) % plan.tracks.length)
+  }
+
+  const handlePlayNeteaseLibrary = async ({ tracks, label }) => {
+    const playableTracks = Array.isArray(tracks)
+      ? tracks.filter(track => track?.audioUrl)
+      : []
+
+    if (playableTracks.length === 0) {
+      setAudioError('这组网易云歌曲暂时没有可播放地址。')
+      return
+    }
+
+    const sessionId = introSessionRef.current + 1
+    introSessionRef.current = sessionId
+    stopSpeaking()
+    cleanupCurrentAudio()
+    setSpeechError('')
+    setAudioError('')
+    setIsDjVoiceEnabled(true)
+    setIsPlaylistOpen(false)
+
+    const plan = {
+      sessionId: `session-netease-library-${Date.now()}`,
+      id: `session-netease-library-${Date.now()}`,
+      source: 'netease-library',
+      sourceType: 'netease',
+      djSource: 'local',
+      searchPlanSource: 'netease-account',
+      mode: 'personal',
+      title: label || '我的网易云',
+      subtitle: 'NetEase · Claudio Player',
+      openingLine: buildLibraryOpeningLine(label, playableTracks.length, playableTracks[0]),
+      tracks: playableTracks,
+      reason: '来自你的网易云账号曲库。',
+      highlights: ['网易云', '歌单', '收藏', '私人电台'],
+    }
+
+    setCurrentPlan(plan)
+    planRef.current = plan
+    setCurrentTrackIndex(0)
+    setTrackTime(0)
+    setTrackDuration(FALLBACK_TRACK_DURATION)
+    setFailedTracks(new Set())
+
+    addChatMessage({
+      type: 'system',
+      text: `网易云曲库已接入 · ${plan.title} · ${playableTracks.length} 首`
+    })
+    const openingId = addChatMessage({
+      type: 'dj',
+      text: plan.openingLine
+    })
+    addTrackChatMessages(playableTracks[0])
+
+    try {
+      await playTrack(0, {
+        plan,
+        startVolume: 0,
+        targetVolume: INTRO_VOLUME,
+        fadeDuration: INTRO_FADE_MS,
+        phaseAfterStart: 'intro'
+      })
+
+      if (introSessionRef.current === sessionId) {
+        speakOpeningLine(plan.openingLine, sessionId, openingId)
+      }
+    } catch (error) {
+      console.error('Netease library playback failed:', error)
+      setAudioError('网易云歌曲已接入，但浏览器没有自动播放。请点底部播放按钮继续。')
+      setPhase('paused')
+    }
   }
 
   const handleVolumeChange = (event) => {
@@ -755,9 +995,9 @@ export default function App() {
           <GlassPanel
             preset="bubble"
             className="max-w-[82%] rounded-2xl rounded-tr-md px-4 py-3 text-sm leading-relaxed"
-            style={{ background: 'rgba(124,92,255,0.18)', border: '1px solid rgba(124,92,255,0.20)' }}
+            style={{ background: 'rgba(74, 49, 142, 0.26)', border: '1px solid rgba(255,255,255,0.20)' }}
           >
-            <span style={{ color: '#E0D4FF' }}>{message.text}</span>
+            <span style={{ color: '#FFFFFF' }}>{message.text}</span>
           </GlassPanel>
         </div>
       )
@@ -768,7 +1008,7 @@ export default function App() {
         <div key={message.id} className="flex justify-center">
           <span
             className="rounded-full px-3 py-1 text-[11px] font-medium"
-            style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF' }}
+            style={{ background: 'rgba(255,255,255,0.42)', color: '#5f6470', border: '1px solid rgba(255,255,255,0.28)' }}
           >
             {message.text}
           </span>
@@ -785,25 +1025,25 @@ export default function App() {
           preset="bubble"
           className="max-w-[88%] rounded-2xl rounded-tl-md px-4 py-3 text-sm leading-relaxed transition-all"
           style={{
-            background: isTrackStory ? 'rgba(139,120,80,0.10)' : 'rgba(255,255,255,0.06)',
-            border: isActive ? '1px solid rgba(124,92,255,0.36)' : '1px solid rgba(255,255,255,0.06)',
-            boxShadow: isActive ? '0 10px 24px rgba(124,92,255,0.14)' : 'none',
+            background: isTrackStory ? 'rgba(255,255,255,0.48)' : 'rgba(255,255,255,0.34)',
+            border: isActive ? '1px solid rgba(255,255,255,0.62)' : '1px solid rgba(255,255,255,0.20)',
+            boxShadow: isActive ? '0 12px 30px rgba(255,255,255,0.20)' : 'none',
           }}
         >
           <div className="mb-1 flex items-center gap-2">
-            <span className="text-[11px] font-semibold" style={{ color: '#9CA3AF' }}>
+            <span className="text-[11px] font-semibold" style={{ color: '#30323a' }}>
               Claudio
             </span>
             {isTrackStory && (
-              <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: 'rgba(255,255,255,0.08)', color: '#9CA3AF' }}>
-                Track note
+              <span className="rounded-full px-2 py-0.5 text-[10px]" style={{ background: 'rgba(255,255,255,0.46)', color: '#6c6f78' }}>
+                Song Story
               </span>
             )}
             {isActive && (
               <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: '#7C5CFF' }} />
             )}
           </div>
-          <span style={{ color: '#E5E7EB' }}>
+          <span style={{ color: '#171820' }}>
             {highlightKeywords(message.text, currentPlan?.highlights || [])}
           </span>
         </GlassPanel>
@@ -813,376 +1053,270 @@ export default function App() {
 
   return (
     <GlassSettingsProvider>
-    <div className="relative h-screen w-full overflow-hidden font-sans" style={{ background: '#0A0C18' }}>
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `
-              radial-gradient(ellipse at 12% 12%, rgba(34, 211, 238, 0.30), transparent 55%),
-              radial-gradient(ellipse at 88% 88%, rgba(124, 92, 255, 0.28), transparent 55%),
-              radial-gradient(ellipse at 50% 30%, rgba(99, 102, 241, 0.12), transparent 50%),
-              radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.20), transparent 62%)
-            `
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: 'radial-gradient(rgba(255,255,255,0.5) 0.8px, transparent 0.8px)',
-            backgroundSize: '22px 22px'
-          }}
-        />
-      </div>
+      <div className="relative h-screen w-full overflow-hidden font-sans">
+        <AlbumWallBackground tracks={currentPlan?.tracks || []} currentTrack={currentTrack} />
+        <GlassSettingsPanel />
 
-      <ParticleCanvas />
-      <GlassSettingsPanel />
-
-      <div className="relative z-10 flex h-full w-full items-center justify-center p-3 sm:p-4">
-        <GlassPanel
-          preset="card"
-          className="flex h-[min(760px,calc(100vh-24px))] w-[460px] max-w-[calc(100vw-18px)] flex-col overflow-hidden"
-          style={{
-            background: 'linear-gradient(180deg, rgba(15,18,35,0.72) 0%, rgba(10,12,28,0.82) 100%)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            boxShadow: '0 30px 90px rgba(0,0,0,0.45), 0 0 60px rgba(124,92,255,0.15)',
-          }}
-        >
-          <header className="shrink-0 px-6 pb-3 pt-5">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white"
-                  style={{ background: 'linear-gradient(135deg, #7C5CFF, #22D3EE)' }}
-                >
-                  C
-                </div>
-                <div>
-                  <p className="text-lg font-semibold tracking-[0.06em]" style={{ color: '#F3F4F6' }}>
-                    Claudio
-                  </p>
-                  <div className="mt-1 flex items-center gap-1.5">
+        <div className="relative z-10 flex h-full w-full items-center justify-center p-3 sm:p-4">
+          <GlassPanel
+            preset="card"
+            className="flex h-[min(790px,calc(100vh-24px))] w-[460px] max-w-[calc(100vw-18px)] flex-col overflow-hidden"
+            contentClassName="relative z-10 flex h-full w-full flex-col overflow-hidden"
+            style={{
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.30), rgba(235,239,245,0.18))',
+              border: '1px solid rgba(255,255,255,0.50)',
+              boxShadow: '0 30px 90px rgba(55,62,82,0.30), inset 0 1px 0 rgba(255,255,255,0.78)',
+            }}
+          >
+            <header className="shrink-0 px-6 pb-3 pt-5">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-end gap-2">
+                    <p className="text-[26px] font-semibold leading-none tracking-[-0.01em]" style={{ color: '#171820' }}>
+                      Claudio
+                    </p>
+                    <span className="pb-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: '#6c6f78' }}>
+                      radio
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ background: getStatusDotColor() }} />
-                    <span className="text-[11px] font-medium" style={{ color: '#9CA3AF' }}>
+                    <span className="text-[11px] font-medium" style={{ color: '#5f6470' }}>
                       {getStatusText()} · Private AI DJ
                     </span>
                   </div>
                 </div>
-              </div>
-              <span className="text-xs font-mono font-semibold" style={{ color: '#D1D5DB' }}>
-                {currentTime}
-              </span>
-            </div>
-
-            <GlassPanel
-              preset="bubble"
-              className="rounded-2xl px-3 py-2"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              <div className="mb-1.5 flex items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-wrap gap-1.5">
-                  {getSourceBadges().map(item => (
-                    <span
-                      key={item}
-                      className="rounded-full px-2.5 py-1 text-[10px] font-medium"
-                      style={{ background: 'rgba(255,255,255,0.08)', color: '#D1D5DB', border: '1px solid rgba(255,255,255,0.06)' }}
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-                <span className="shrink-0 text-[10px] font-medium" style={{ color: '#6B7280' }}>
-                  {phase === 'intro' ? 'DJ live' : phase === 'playing' ? 'On air' : phase === 'planning' ? '...' : 'Radio ready'}
+                <span className="text-xs font-mono font-semibold" style={{ color: '#30323a' }}>
+                  {currentTime}
                 </span>
               </div>
-              <SoundWaves isPlaying={phase === 'playing'} isPlanning={phase === 'planning'} isSpeaking={phase === 'intro'} />
-            </GlassPanel>
-          </header>
 
-          <main
-            ref={chatFeedRef}
-            className="flex-1 space-y-3 overflow-y-auto px-5 pb-4 pt-2 sm:px-6"
-            style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.02) 0.6px, transparent 0.6px)', backgroundSize: '13px 13px' }}
-          >
-            {chatMessages.map(renderChatMessage)}
-
-            {!currentPlan && phase === 'idle' && (
-              <NeteaseLoginPanel />
-            )}
-
-            {phase === 'planning' && (
-              <div className="flex justify-start">
-                <div
-                  className="rounded-2xl rounded-tl-md px-4 py-3"
-                  style={{ background: 'rgba(255,255,255,0.06)', color: '#9CA3AF', border: '1px solid rgba(255,255,255,0.06)' }}
-                >
-                  <TypingDots />
-                </div>
-              </div>
-            )}
-
-            {(audioError || speechError) && (
-              <div className="flex justify-center">
-                <span
-                  className="max-w-[88%] rounded-full px-3 py-1 text-[11px]"
-                  style={{ background: 'rgba(245,158,11,0.15)', color: '#FCD34D' }}
-                >
-                  {audioError || speechError}
-                </span>
-              </div>
-            )}
-          </main>
-
-          <footer
-            className="shrink-0 px-4 pb-4 pt-3 sm:px-5"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              borderTop: '1px solid rgba(255,255,255,0.06)',
-            }}
-          >
-            {currentPlan?.tracks?.length > 0 && (
-              <div className="mb-2">
-                <button
-                  onClick={() => setIsPlaylistOpen(prev => !prev)}
-                  className="mb-2 flex w-full items-center justify-between rounded-2xl px-3.5 py-2 text-left text-xs font-medium"
-                  style={{ background: 'rgba(255,255,255,0.06)', color: '#D1D5DB', border: '1px solid rgba(255,255,255,0.06)' }}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#7C5CFF' }} />
-                    <span>Up next · {currentPlan.tracks.length} tracks · {currentPlan.sourceType === 'netease' ? 'NetEase' : 'Local'}</span>
-                  </span>
-                  <span className="text-[10px]" style={{ color: '#9CA3AF' }}>
-                    {isPlaylistOpen ? 'Hide' : 'Show'}
-                  </span>
-                </button>
-
-                {isPlaylistOpen && (
-                  <div
-                    className="mb-2 max-h-36 space-y-1.5 overflow-y-auto rounded-2xl p-1.5"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.06)' }}
-                  >
-                    {currentPlan.tracks.map((track, index) => (
-                      <button
-                        key={track.id || index}
-                        onClick={() => playTrackByIndex(index)}
-                        className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-all"
-                        style={{
-                          background: index === currentTrackIndex ? 'rgba(124,92,255,0.12)' : 'transparent',
-                          boxShadow: index === currentTrackIndex ? '0 6px 16px rgba(124,92,255,0.15)' : 'none'
-                        }}
-                      >
-                        <span
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
-                          style={{
-                            background: index === currentTrackIndex ? 'rgba(124,92,255,0.30)' : 'rgba(255,255,255,0.06)',
-                            color: index === currentTrackIndex ? '#FFFFFF' : '#9CA3AF'
-                          }}
-                        >
-                          {index === currentTrackIndex ? 'Now' : index + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold" style={{ color: '#F3F4F6' }}>
-                            {track.title}
-                          </p>
-                          <p className="truncate text-[11px]" style={{ color: '#9CA3AF' }}>
-                            {track.artist} · {track.phase || track.mode}
-                          </p>
-                        </div>
-                        <span
-                          className="rounded-full px-2 py-1 text-[10px] font-medium"
-                          style={{
-                            background: index === currentTrackIndex ? 'rgba(124,92,255,0.20)' : 'rgba(255,255,255,0.06)',
-                            color: index === currentTrackIndex ? '#A78BFA' : '#9CA3AF'
-                          }}
-                        >
-                          {getSourceLabel(track)}
-                        </span>
-                        <span
-                          className="h-6 w-1 rounded-full"
-                          style={{ background: index === currentTrackIndex ? '#7C5CFF' : 'rgba(17,24,39,0.06)' }}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <GlassPanel
-              preset="player"
-              className="rounded-[24px] px-3.5 py-3"
-              style={{ background: 'rgba(17,18,23,0.75)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 18px 34px rgba(0,0,0,0.22)' }}
-            >
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="mb-1 flex items-center gap-2">
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${isPlayingState ? 'animate-pulse' : ''}`}
-                      style={{ background: currentTrack ? '#A7F3D0' : '#737782' }}
-                    />
-                    <span className="text-[10px] font-semibold tracking-[0.16em]" style={{ color: '#6EE7B7' }}>
-                      {isPlayingState ? 'ON AIR' : phase === 'paused' ? 'PAUSED' : 'READY'}
-                    </span>
-                  </div>
-                  <div className="mb-0.5 flex items-center gap-2">
-                    <p className="truncate text-sm font-semibold" style={{ color: '#FFFFFF' }}>
-                      {currentTrack?.title || 'Claudio is waiting'}
+              <GlassPanel
+                preset="bubble"
+                className="rounded-[22px] px-3 py-2"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.38), rgba(224,235,247,0.22))',
+                  border: '1px solid rgba(255,255,255,0.38)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.62), 0 16px 34px rgba(55,62,82,0.12)',
+                }}
+              >
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[11px] font-semibold" style={{ color: '#30323a' }}>
+                      {currentTrack ? currentTrack.title : 'Claudio is listening'}
+                    </p>
+                    <p className="truncate text-[10px]" style={{ color: '#6c6f78' }}>
+                      {currentTrack ? `${currentTrack.artist} · ${getSourceLabel(currentTrack)}` : 'Tell Claudio how you feel'}
                     </p>
                   </div>
-                  <p className="truncate text-[11px]" style={{ color: '#A8ADB7' }}>
-                    {currentTrack ? `${currentTrack.artist} · ${currentTrack.phase || currentTrack.mode || 'Claudio'} · ${getSourceLabel(currentTrack)}` : 'Tell Claudio how you feel'}
-                  </p>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2">
                   <button
-                    onClick={playPreviousTrack}
-                    disabled={!currentPlan}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-lg disabled:opacity-30"
-                    style={{ color: '#F9FAFB', background: 'rgba(255,255,255,0.09)' }}
-                    aria-label="Previous track"
+                    type="button"
+                    onClick={() => setIsNeteaseLibraryOpen(prev => !prev)}
+                    className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold"
+                    style={{ background: 'rgba(255,255,255,0.48)', color: '#4a318e' }}
                   >
-                    ‹
-                  </button>
-                  <button
-                    onClick={handlePlayPause}
-                    disabled={!currentPlan}
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-white transition-transform hover:scale-105 disabled:opacity-30"
-                    style={{ background: '#7C5CFF', boxShadow: '0 10px 22px rgba(124,92,255,0.32)' }}
-                    aria-label={isPlayingState ? 'Pause' : 'Play'}
-                  >
-                    {isPlayingState ? (
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M6 4.5A1.5 1.5 0 004.5 6v8A1.5 1.5 0 006 15.5h.5A1.5 1.5 0 008 14V6a1.5 1.5 0 00-1.5-1.5H6zm7.5 0A1.5 1.5 0 0012 6v8a1.5 1.5 0 001.5 1.5h.5a1.5 1.5 0 001.5-1.5V6A1.5 1.5 0 0014 4.5h-.5z" />
-                      </svg>
-                    ) : (
-                      <svg className="ml-0.5 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M6.3 2.84A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.27l9.34-5.89a1.5 1.5 0 000-2.54L6.3 2.84z" />
-                      </svg>
-                    )}
-                  </button>
-                  <button
-                    onClick={playNextTrack}
-                    disabled={!currentPlan}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-lg disabled:opacity-30"
-                    style={{ color: '#F9FAFB', background: 'rgba(255,255,255,0.09)' }}
-                    aria-label="Next track"
-                  >
-                    ›
+                    我的网易云
                   </button>
                 </div>
-              </div>
+                <SoundWaves isPlaying={phase === 'playing'} isPlanning={phase === 'planning'} isSpeaking={phase === 'intro'} />
+              </GlassPanel>
+            </header>
 
-              <div className="mb-2.5 flex items-center gap-2">
-                <span className="w-8 text-[10px] font-mono" style={{ color: '#A8ADB7' }}>
-                  {formatPlaybackTime(trackTime)}
-                </span>
-                <div className="flex h-8 flex-1 items-center gap-0.5 overflow-hidden rounded-full px-2" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                  {Array.from({ length: 44 }).map((_, index) => {
-                    const isActive = progressPercent >= (index / 43) * 100
-                    const height = 5 + Math.abs(Math.sin(index * 0.54)) * 13
-                    return (
-                      <span
-                        key={index}
-                        className="flex-1 rounded-full transition-colors"
-                        style={{
-                          height: `${height}px`,
-                          background: isActive ? '#6EE7B7' : 'rgba(255,255,255,0.10)',
-                          opacity: isActive ? 0.85 : 0.60
-                        }}
-                      />
-                    )
-                  })}
-                </div>
-                <span className="w-8 text-right text-[10px] font-mono" style={{ color: '#A8ADB7' }}>
-                  {formatPlaybackTime(trackDuration)}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-[10px]" style={{ color: '#A8ADB7' }}>Vol</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={musicVolume}
-                  onChange={handleVolumeChange}
-                  className="h-1 flex-1 accent-[#A7F3D0]"
+            <main
+              ref={chatFeedRef}
+              className="flex-1 space-y-3 overflow-y-auto px-5 pb-4 pt-2 sm:px-6"
+            >
+              {isNeteaseLibraryOpen && (
+                <NeteaseLibraryPanel
+                  isOpen={isNeteaseLibraryOpen}
+                  onClose={() => setIsNeteaseLibraryOpen(false)}
+                  onPlayTracks={handlePlayNeteaseLibrary}
                 />
-                <span className="w-7 text-right text-[10px] font-mono" style={{ color: '#A8ADB7' }}>
-                  {Math.round(musicVolume * 100)}
-                </span>
-                {currentPlan && (
-                  <button
-                    onClick={replayDJ}
-                    className="rounded-full px-2 py-1 text-[10px] font-medium"
-                    style={{ background: 'rgba(255,255,255,0.08)', color: '#E5E7EB' }}
-                  >
-                    Replay
-                  </button>
-                )}
-                {phase === 'intro' && isSpeaking && (
-                  <button
-                    onClick={handleStopSpeaking}
-                    className="rounded-full px-2 py-1 text-[10px] font-medium"
-                    style={{ background: 'rgba(239,68,68,0.15)', color: '#FCA5A5' }}
-                  >
-                    Stop
-                  </button>
-                )}
-              </div>
-            </GlassPanel>
+              )}
 
-            <div className="mt-2 flex gap-2">
-              <input
-                type="text"
-                placeholder="告诉 Claudio 你现在的状态，或直接调整音乐…"
-                className="min-w-0 flex-1 rounded-xl px-3 py-2.5 text-xs shadow-sm focus:outline-none"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: '#F3F4F6' }}
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleGenerate(userInput)}
-              />
-              <button
-                onClick={() => handleGenerate(userInput)}
-                disabled={!userInput.trim() || phase === 'planning'}
-                className="rounded-xl px-3 py-2.5 text-xs font-semibold text-white transition-all disabled:opacity-45"
-                style={{ background: 'linear-gradient(135deg, #111217, #7C5CFF)' }}
+              {chatMessages.map(renderChatMessage)}
+
+              {!currentPlan && phase === 'idle' && !isNeteaseLibraryOpen && (
+                <NeteaseLoginPanel />
+              )}
+
+              {phase === 'planning' && (
+                <div className="flex justify-start">
+                  <GlassPanel
+                    preset="bubble"
+                    className="rounded-2xl rounded-tl-md px-4 py-3"
+                    style={{ background: 'rgba(255,255,255,0.34)', border: '1px solid rgba(255,255,255,0.20)' }}
+                  >
+                    <TypingDots />
+                  </GlassPanel>
+                </div>
+              )}
+
+              {(audioError || speechError) && (
+                <div className="flex justify-center">
+                  <span
+                    className="max-w-[88%] rounded-full px-3 py-1 text-[11px]"
+                    style={{ background: 'rgba(255,247,237,0.72)', color: '#92400E', border: '1px solid rgba(251,146,60,0.16)' }}
+                  >
+                    {audioError || speechError}
+                  </span>
+                </div>
+              )}
+            </main>
+
+            <footer
+              className="shrink-0 px-4 pb-4 pt-3 sm:px-5"
+              style={{
+                background: 'rgba(255,255,255,0.20)',
+                borderTop: '1px solid rgba(255,255,255,0.26)',
+              }}
+            >
+              {currentPlan?.tracks?.length > 0 && (
+                <div className="mb-2">
+                  <button
+                    onClick={() => setIsPlaylistOpen(prev => !prev)}
+                    className="mb-2 flex w-full items-center justify-between rounded-2xl px-3.5 py-2 text-left text-xs font-medium"
+                    style={{ background: 'rgba(255,255,255,0.34)', color: '#30323a', border: '1px solid rgba(255,255,255,0.22)' }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#7C5CFF' }} />
+                      <span>Up next · {currentPlan.tracks.length} tracks · {currentPlan.sourceType === 'netease' ? 'NetEase' : 'Local'}</span>
+                    </span>
+                    <span className="text-[10px]" style={{ color: '#6c6f78' }}>
+                      {isPlaylistOpen ? 'Hide' : 'Show'}
+                    </span>
+                  </button>
+
+                  {isPlaylistOpen && (
+                    <div
+                      className="mb-2 max-h-36 space-y-1.5 overflow-y-auto rounded-2xl p-1.5"
+                      style={{ background: 'rgba(255,255,255,0.24)', border: '1px solid rgba(255,255,255,0.20)' }}
+                    >
+                      {currentPlan.tracks.map((track, index) => (
+                        <button
+                          key={track.id || index}
+                          onClick={() => playTrackByIndex(index)}
+                          className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-all"
+                          style={{
+                            background: index === currentTrackIndex ? 'rgba(255,255,255,0.50)' : 'transparent',
+                          }}
+                        >
+                          <span
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+                            style={{
+                              background: index === currentTrackIndex ? 'rgba(124,92,255,0.78)' : 'rgba(255,255,255,0.34)',
+                              color: index === currentTrackIndex ? '#FFFFFF' : '#6c6f78'
+                            }}
+                          >
+                            {index === currentTrackIndex ? 'Now' : index + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold" style={{ color: '#1f2330' }}>
+                              {track.title}
+                            </p>
+                            <p className="truncate text-[11px]" style={{ color: '#6c6f78' }}>
+                              {track.artist} · {track.phase || track.mode || getSourceLabel(track)}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <GlassPanel
+                preset="player"
+                className="rounded-[24px] px-3.5 py-3"
+                style={{ background: 'rgba(255,255,255,0.42)', border: '1px solid rgba(255,255,255,0.36)', boxShadow: '0 18px 34px rgba(55,62,82,0.18)' }}
               >
-                Send
-              </button>
-            </div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="mb-1 flex items-center gap-2">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${isPlayingState ? 'animate-pulse' : ''}`}
+                        style={{ background: currentTrack ? '#4a318e' : '#8d93a1' }}
+                      />
+                      <span className="text-[10px] font-semibold tracking-[0.16em]" style={{ color: '#4a318e' }}>
+                        {isPlayingState ? 'ON AIR' : phase === 'paused' ? 'PAUSED' : 'READY'}
+                      </span>
+                    </div>
+                    <p className="truncate text-sm font-semibold" style={{ color: '#171820' }}>
+                      {currentTrack?.title || 'Claudio is waiting'}
+                    </p>
+                    <p className="truncate text-[11px]" style={{ color: '#5f6470' }}>
+                      {currentTrack ? `${currentTrack.artist} · ${getSourceLabel(currentTrack)}` : 'Tell Claudio how you feel'}
+                    </p>
+                  </div>
 
-            {!currentPlan && (
-              <div className="mt-2 flex justify-center gap-1.5">
-                {quickInputs.map(item => (
-                  <button
-                    key={item.text}
-                    onClick={() => handleGenerate(item.input)}
-                    className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: '#D1D5DB' }}
-                  >
-                    {item.text}
-                  </button>
-                ))}
-              </div>
-            )}
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button onClick={playPreviousTrack} disabled={!currentPlan} className="flex h-8 w-8 items-center justify-center rounded-full text-lg disabled:opacity-30" style={{ color: '#1f2330', background: 'rgba(255,255,255,0.48)' }} aria-label="Previous track">‹</button>
+                    <button onClick={handlePlayPause} disabled={!currentPlan} className="flex h-9 w-9 items-center justify-center rounded-full text-white transition-transform hover:scale-105 disabled:opacity-30" style={{ background: '#4a318e', boxShadow: '0 10px 22px rgba(74,49,142,0.26)' }} aria-label={isPlayingState ? 'Pause' : 'Play'}>
+                      {isPlayingState ? (
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6 4.5A1.5 1.5 0 004.5 6v8A1.5 1.5 0 006 15.5h.5A1.5 1.5 0 008 14V6a1.5 1.5 0 00-1.5-1.5H6zm7.5 0A1.5 1.5 0 0012 6v8a1.5 1.5 0 001.5 1.5h.5a1.5 1.5 0 001.5-1.5V6A1.5 1.5 0 0014 4.5h-.5z" /></svg>
+                      ) : (
+                        <svg className="ml-0.5 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.84A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.27l9.34-5.89a1.5 1.5 0 000-2.54L6.3 2.84z" /></svg>
+                      )}
+                    </button>
+                    <button onClick={playNextTrack} disabled={!currentPlan} className="flex h-8 w-8 items-center justify-center rounded-full text-lg disabled:opacity-30" style={{ color: '#1f2330', background: 'rgba(255,255,255,0.48)' }} aria-label="Next track">›</button>
+                  </div>
+                </div>
 
-            {currentPlan && (
-              <div className="mt-2 flex items-center justify-between px-1">
-                <p className="truncate text-[10px]" style={{ color: '#6B7280' }}>
-                  {currentPlan.reason}
-                </p>
-                <button onClick={handleReset} className="ml-3 shrink-0 text-[10px] font-medium" style={{ color: '#9CA3AF' }}>
-                  New wave
+                <div className="mb-2.5 flex items-center gap-2">
+                  <span className="w-8 text-[10px] font-mono" style={{ color: '#5f6470' }}>{formatPlaybackTime(trackTime)}</span>
+                  <div className="flex h-8 flex-1 items-center gap-0.5 overflow-hidden rounded-full px-2" style={{ background: 'rgba(255,255,255,0.36)' }}>
+                    {Array.from({ length: 44 }).map((_, index) => {
+                      const isActive = progressPercent >= (index / 43) * 100
+                      const height = 5 + Math.abs(Math.sin(index * 0.54)) * 13
+                      return <span key={index} className="flex-1 rounded-full transition-colors" style={{ height: `${height}px`, background: isActive ? '#4a318e' : 'rgba(77,82,94,0.20)', opacity: isActive ? 0.88 : 0.70 }} />
+                    })}
+                  </div>
+                  <span className="w-8 text-right text-[10px] font-mono" style={{ color: '#5f6470' }}>{formatPlaybackTime(trackDuration)}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px]" style={{ color: '#5f6470' }}>Vol</span>
+                  <input type="range" min="0" max="1" step="0.01" value={musicVolume} onChange={handleVolumeChange} className="h-1 flex-1 accent-[#4a318e]" />
+                  <span className="w-7 text-right text-[10px] font-mono" style={{ color: '#5f6470' }}>{Math.round(musicVolume * 100)}</span>
+                  {currentPlan && <button onClick={replayDJ} className="rounded-full px-2 py-1 text-[10px] font-medium" style={{ background: 'rgba(255,255,255,0.42)', color: '#4a318e' }}>Replay</button>}
+                  {phase === 'intro' && isSpeaking && <button onClick={handleStopSpeaking} className="rounded-full px-2 py-1 text-[10px] font-medium" style={{ background: 'rgba(239,68,68,0.14)', color: '#BE123C' }}>Stop</button>}
+                </div>
+              </GlassPanel>
+
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  placeholder="告诉 Claudio 你现在的状态，或直接调整音乐..."
+                  className="min-w-0 flex-1 rounded-xl px-3 py-2.5 text-xs shadow-sm focus:outline-none"
+                  style={{ background: 'rgba(255,255,255,0.42)', border: '1px solid rgba(255,255,255,0.26)', color: '#171820' }}
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleGenerate(userInput)}
+                />
+                <button
+                  onClick={() => handleGenerate(userInput)}
+                  disabled={!userInput.trim() || phase === 'planning'}
+                  className="rounded-xl px-3 py-2.5 text-xs font-semibold text-white transition-all disabled:opacity-45"
+                  style={{ background: '#4a318e' }}
+                >
+                  Send
                 </button>
               </div>
-            )}
-          </footer>
-        </GlassPanel>
+
+              {currentPlan && (
+                <div className="mt-2 flex items-center justify-between px-1">
+                  <p className="truncate text-[10px]" style={{ color: '#5f6470' }}>
+                    {currentPlan.reason}
+                  </p>
+                  <button onClick={handleReset} className="ml-3 shrink-0 text-[10px] font-medium" style={{ color: '#4a318e' }}>
+                    New wave
+                  </button>
+                </div>
+              )}
+            </footer>
+          </GlassPanel>
+        </div>
       </div>
-    </div>
     </GlassSettingsProvider>
   )
 }

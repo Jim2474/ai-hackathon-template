@@ -110,8 +110,8 @@ function NeteaseLoginPanel() {
       preset="bubble"
       className="rounded-2xl px-4 py-3"
       style={{
-        background: 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'rgba(255,255,255,0.72)',
+        border: '1px solid rgba(0,0,0,0.06)',
       }}
     >
       <div className="flex items-start justify-between gap-3">
@@ -119,13 +119,13 @@ function NeteaseLoginPanel() {
           <div className="mb-1 flex items-center gap-2">
             <span
               className="h-1.5 w-1.5 rounded-full"
-              style={{ background: isLoggedIn ? '#10B981' : '#F59E0B' }}
+              style={{ background: isLoggedIn ? '#0066cc' : '#f59e0b' }}
             />
-            <p className="truncate text-xs font-semibold" style={{ color: '#F3F4F6' }}>
+            <p className="truncate text-xs font-semibold" style={{ color: '#1d1d1f' }}>
               {isLoggedIn ? `网易云已登录 · ${profile?.nickname || '会员账号'}` : '网易云未登录'}
             </p>
           </div>
-          <p className="text-[11px] leading-relaxed" style={{ color: '#9CA3AF' }}>
+          <p className="text-[11px] leading-relaxed" style={{ color: '#7a7a7a' }}>
             {message}
           </p>
         </div>
@@ -135,7 +135,7 @@ function NeteaseLoginPanel() {
             type="button"
             onClick={handleLogout}
             className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold"
-            style={{ background: 'rgba(255,255,255,0.08)', color: '#E5E7EB' }}
+            style={{ background: '#f5f5f7', color: '#0066cc' }}
           >
             退出
           </button>
@@ -144,7 +144,7 @@ function NeteaseLoginPanel() {
             type="button"
             onClick={handleCreateQrLogin}
             className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white"
-            style={{ background: '#C20C0C' }}
+            style={{ background: '#0066cc' }}
           >
             扫码登录
           </button>
@@ -173,13 +173,13 @@ function NeteaseLoginPanel() {
             onChange={(event) => setManualCookie(event.target.value)}
             placeholder="可直接粘贴 MUSIC_U 值"
             className="min-w-0 flex-1 rounded-xl px-3 py-2 text-xs focus:outline-none"
-            style={{ background: 'rgba(255,247,237,0.06)', border: '1px solid rgba(251,146,60,0.15)', color: '#F3F4F6' }}
+            style={{ background: '#f5f5f7', border: '1px solid rgba(0,0,0,0.08)', color: '#1d1d1f' }}
           />
           <button
             type="submit"
             disabled={!manualCookie.trim()}
             className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-white disabled:opacity-45"
-            style={{ background: 'rgba(255,255,255,0.10)' }}
+            style={{ background: '#0066cc' }}
           >
             导入
           </button>
@@ -190,4 +190,3 @@ function NeteaseLoginPanel() {
 }
 
 export default NeteaseLoginPanel
-

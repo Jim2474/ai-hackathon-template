@@ -1,12 +1,16 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 
-const STORAGE_KEY = 'moodwave_glass_settings'
+const STORAGE_KEY = 'moodwave_glass_settings_v4'
 
 const DEFAULTS = {
-  opacity: 0.72,
-  blurAmount: 0.12,
-  displacementScale: 45,
-  saturation: 160,
+  opacity: 0.98,
+  blurAmount: 0.2,
+  displacementScale: 135,
+  saturation: 215,
+  aberrationIntensity: 4.8,
+  elasticity: 0.48,
+  mode: 'shader',
+  albumBackgroundMode: 'collage',
   enabled: true,
 }
 

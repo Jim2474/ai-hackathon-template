@@ -24,7 +24,7 @@ function normalizeNeteaseSong(song) {
     source: 'netease',
     sourceType: 'netease',
     audioUrl: null,
-    coverUrl: song.raw?.album?.picUrl || song.raw?.al?.picUrl || '',
+    coverUrl: song.coverUrl || song.raw?.album?.picUrl || song.raw?.al?.picUrl || '',
     raw: song.raw || song
   };
 }
@@ -60,21 +60,35 @@ export async function buildNeteasePlaylist(searchQueries, options = {}) {
   const targetCount = options.targetCount || DEFAULT_TARGET_COUNT;
   const maxTracks = options.maxTracks || DEFAULT_MAX_TRACKS;
   const searchLimit = options.searchLimit || 8;
-  const queries = Array.isArray(searchQueries)
-    ? searchQueries.map(query => String(query || '').trim()).filter(Boolean)
+  const fallbackQueries = Array.isArray(options.fallbackQueries)
+    ? options.fallbackQueries.map(query => String(query || '').trim()).filter(Boolean)
     : [];
+  const queries = [
+    ...(Array.isArray(searchQueries) ? searchQueries : []),
+    ...fallbackQueries
+  ].map(query => String(query || '').trim()).filter(Boolean);
+  const uniqueQueries = [...new Set(queries)];
 
-  if (queries.length === 0) {
+  if (uniqueQueries.length === 0) {
     throw new Error('No NetEase search queries');
   }
 
   const selected = [];
   const seenIds = new Set();
+  const failedQueries = [];
 
-  for (const query of queries) {
+  for (const query of uniqueQueries) {
     if (selected.length >= targetCount) break;
 
-    const candidates = await searchNeteaseSongs(query, searchLimit);
+    let candidates = [];
+    try {
+      candidates = await searchNeteaseSongs(query, searchLimit);
+    } catch (error) {
+      failedQueries.push(query);
+      console.warn(`NetEase search failed for "${query}", trying next query:`, error);
+      continue;
+    }
+
     for (const candidate of candidates) {
       if (selected.length >= maxTracks) break;
       if (seenIds.has(candidate.neteaseId)) continue;
@@ -95,9 +109,12 @@ export async function buildNeteasePlaylist(searchQueries, options = {}) {
   }
 
   if (selected.length === 0) {
-    throw new Error('NetEase returned no playable tracks');
+    throw new Error(
+      failedQueries.length > 0
+        ? `NetEase returned no playable tracks. Failed queries: ${failedQueries.join(', ')}`
+        : 'NetEase returned no playable tracks'
+    );
   }
 
   return selected.slice(0, maxTracks);
 }
-

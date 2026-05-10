@@ -47,17 +47,44 @@ function getAlbumName(song) {
   return song?.album?.name || song?.al?.name || '未知专辑'
 }
 
+function getCoverUrl(song) {
+  return (
+    song?.coverUrl ||
+    song?.album?.picUrl ||
+    song?.album?.blurPicUrl ||
+    song?.al?.picUrl ||
+    song?.al?.pic_str ||
+    song?.picUrl ||
+    ''
+  )
+}
+
 function normalizeSong(song) {
   return {
     id: song?.id,
     name: song?.name || '未知歌曲',
     artistsText: getArtistText(song),
     albumName: getAlbumName(song),
+    coverUrl: getCoverUrl(song),
     duration: song?.duration || song?.dt || 0,
     fee: song?.fee,
     status: song?.status,
     albumId: song?.album?.id || song?.al?.id,
     raw: song
+  }
+}
+
+function normalizePlaylist(playlist) {
+  return {
+    id: playlist?.id,
+    name: playlist?.name || '未命名歌单',
+    coverUrl: playlist?.coverImgUrl || playlist?.coverUrl || '',
+    description: playlist?.description || '',
+    trackCount: playlist?.trackCount || 0,
+    playCount: playlist?.playCount || 0,
+    subscribed: Boolean(playlist?.subscribed),
+    creator: playlist?.creator?.nickname || '',
+    raw: playlist
   }
 }
 
@@ -102,7 +129,24 @@ export async function searchSongs(keywords, options = {}) {
   })
 
   const songs = data?.result?.songs || []
-  return Array.isArray(songs) ? songs.map(normalizeSong).filter(song => song.id) : []
+  if (!Array.isArray(songs)) return []
+
+  const normalized = songs.map(normalizeSong).filter(song => song.id)
+  if (normalized.length === 0 || normalized.every(song => song.coverUrl)) {
+    return normalized
+  }
+
+  try {
+    const detailSongs = await getSongDetail(normalized.map(song => song.id))
+    const detailById = new Map(detailSongs.map(song => [song.id, song]))
+    return normalized.map(song => ({
+      ...song,
+      coverUrl: song.coverUrl || detailById.get(song.id)?.coverUrl || '',
+      raw: detailById.get(song.id)?.raw || song.raw
+    }))
+  } catch {
+    return normalized
+  }
 }
 
 export async function getSongDetail(ids) {
@@ -170,6 +214,43 @@ export async function getPlaylistDetail(id) {
     trackIds,
     raw: playlist
   }
+}
+
+export async function getUserPlaylists(uid, options = {}) {
+  if (!uid) return []
+
+  const data = await requestNetease('/user/playlist', {
+    uid,
+    limit: options.limit || 30,
+    offset: options.offset || 0,
+    timestamp: Date.now()
+  })
+
+  const playlists = data?.playlist || []
+  return Array.isArray(playlists)
+    ? playlists.map(normalizePlaylist).filter(playlist => playlist.id)
+    : []
+}
+
+export async function getLikedSongIds(uid) {
+  if (!uid) return []
+
+  const data = await requestNetease('/likelist', {
+    uid,
+    timestamp: Date.now()
+  })
+
+  const ids = data?.ids || []
+  return Array.isArray(ids) ? ids.filter(Boolean) : []
+}
+
+export async function getLikedSongs(uid, options = {}) {
+  const ids = await getLikedSongIds(uid)
+  const limit = options.limit || 50
+  const limitedIds = ids.slice(0, limit)
+
+  if (limitedIds.length === 0) return []
+  return getSongDetail(limitedIds)
 }
 
 export async function getSongUrl(id, options = {}) {

@@ -7,7 +7,7 @@ const defaultPlans = {
   focus: {
     title: '低阻力学习电台',
     subtitle: '90min · Focus · Light Instrumental',
-    searchQueries: ['学习 纯音乐', '专注 轻音乐', 'lofi 学习'],
+    searchQueries: ['学习', '纯音乐', '钢琴', '专注', '轻音乐'],
     energyCurve: 'low_to_mid',
     avoid: ['强人声', '高刺激', '过快节奏'],
     openingIntent: '先降低启动阻力，再逐渐进入专注。'
@@ -15,7 +15,7 @@ const defaultPlans = {
   calm: {
     title: '情绪缓冲电台',
     subtitle: '45min · Calm · Soft Piano',
-    searchQueries: ['治愈 轻音乐', '放松 钢琴', '安静 纯音乐'],
+    searchQueries: ['治愈', '放松', '钢琴', '安静', '纯音乐'],
     energyCurve: 'low_stable',
     avoid: ['强节奏', '过亮人声', '压迫感'],
     openingIntent: '先把情绪接住，再慢慢放松。'
@@ -23,7 +23,7 @@ const defaultPlans = {
   sleep: {
     title: '睡前降速电台',
     subtitle: '30min · Sleep · Gentle Ambient',
-    searchQueries: ['睡前轻音乐', '助眠纯音乐', '自然声 放松'],
+    searchQueries: ['助眠', '睡前', '白噪音', '钢琴', '自然声'],
     energyCurve: 'low_to_lower',
     avoid: ['鼓点明显', '高刺激', '强人声'],
     openingIntent: '让白天慢慢退后，声音越来越轻。'
@@ -31,7 +31,7 @@ const defaultPlans = {
   energy: {
     title: '有活力一点电台',
     subtitle: '45min · Energy · Bright Rhythm',
-    searchQueries: ['活力 节奏', '动感 音乐', '提神 音乐', '电子 运动', '燃 音乐'],
+    searchQueries: ['活力', '节奏', '动感', '提神', '电子'],
     energyCurve: 'mid_to_high',
     avoid: ['太慢', '太散', '压抑'],
     openingIntent: '先把身体叫醒，再慢慢加一点推动力。'
@@ -39,7 +39,7 @@ const defaultPlans = {
   nature: {
     title: '自然呼吸电台',
     subtitle: '40min · Nature · Ambient',
-    searchQueries: ['雨声', '白噪音', '自然声'],
+    searchQueries: ['雨声', '白噪音', '自然声', '助眠'],
     energyCurve: 'low_open',
     avoid: ['强旋律', '强人声', '密集鼓点'],
     openingIntent: '把空间打开一点，让注意力慢慢松下来。'
@@ -85,6 +85,10 @@ function createFallbackSearchPlan(userInput) {
     mode,
     ...defaultPlans[mode]
   };
+}
+
+function getReliableNeteaseQueries(mode) {
+  return defaultPlans[mode]?.searchQueries || defaultPlans.focus.searchQueries;
 }
 
 function createFallbackDJScript(userInput, searchPlan, tracks) {
@@ -198,7 +202,8 @@ export async function createMoodwaveSession(userInput) {
     neteaseTracks = await buildNeteasePlaylist(searchPlan.searchQueries, {
       targetCount: 3,
       maxTracks: 5,
-      searchLimit: 8
+      searchLimit: 8,
+      fallbackQueries: getReliableNeteaseQueries(searchPlan.mode)
     });
   } catch (error) {
     console.warn('NetEase playlist failed, switching to local library:', error);
