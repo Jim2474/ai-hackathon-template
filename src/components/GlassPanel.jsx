@@ -1,4 +1,5 @@
 import LiquidGlass from 'liquid-glass-react'
+import { useGlassSettings } from './GlassSettings'
 
 const PRESETS = {
   card: {
@@ -40,15 +41,33 @@ const PRESETS = {
 }
 
 export default function GlassPanel({ preset = 'panel', children, className = '', style = {}, ...rest }) {
+  const { settings } = useGlassSettings()
   const base = PRESETS[preset] || PRESETS.panel
 
+  if (!settings.enabled) {
+    return (
+      <div className={className} style={style} {...rest}>
+        {children}
+      </div>
+    )
+  }
+
+  const merged = {
+    ...base,
+    blurAmount: settings.blurAmount,
+    displacementScale: settings.displacementScale,
+    saturation: settings.saturation,
+  }
+
+  const mergedStyle = {
+    ...style,
+    ...(style.background ? {
+      background: style.background.replace(/[\d.]+\)$/, `${settings.opacity})`)
+    } : {}),
+  }
+
   return (
-    <LiquidGlass
-      {...base}
-      className={className}
-      style={style}
-      {...rest}
-    >
+    <LiquidGlass {...merged} className={className} style={mergedStyle} {...rest}>
       {children}
     </LiquidGlass>
   )

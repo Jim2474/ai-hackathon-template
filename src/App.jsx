@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import NeteaseLoginPanel from './components/NeteaseLoginPanel'
 import ParticleCanvas from './components/ParticleCanvas'
 import GlassPanel from './components/GlassPanel'
+import { GlassSettingsProvider } from './components/GlassSettings'
+import GlassSettingsPanel from './components/GlassSettingsPanel'
 import { getSourceLabel } from './services/audioSourceService'
 import { createMoodwaveSession } from './services/musicOrchestrator'
 import { speakDJLine, stopSpeaking } from './services/ttsService'
@@ -810,6 +812,7 @@ export default function App() {
   }
 
   return (
+    <GlassSettingsProvider>
     <div className="relative h-screen w-full overflow-hidden font-sans" style={{ background: '#0A0C18' }}>
       <div className="pointer-events-none absolute inset-0">
         <div
@@ -833,6 +836,7 @@ export default function App() {
       </div>
 
       <ParticleCanvas />
+      <GlassSettingsPanel />
 
       <div className="relative z-10 flex h-full w-full items-center justify-center p-3 sm:p-4">
         <GlassPanel
@@ -1179,5 +1183,6 @@ export default function App() {
         </GlassPanel>
       </div>
     </div>
+    </GlassSettingsProvider>
   )
 }
