@@ -1,7 +1,23 @@
 import { useState, useRef, useEffect } from 'react'
 import { useGlassSettings } from './GlassSettings'
+import { XiaoMusicSettingsControls } from './XiaoMusicPanel'
 
-export default function GlassSettingsPanel() {
+export default function GlassSettingsPanel({
+  xiaoSettings,
+  xiaoDevices,
+  xiaoStatus,
+  xiaoBusy,
+  currentTrack,
+  onXiaoSettingsChange,
+  onDetectXiaoDevices,
+  onRefreshXiaoStatus,
+  onPlayCurrentOnXiao,
+  onStopXiao,
+  onPreviousXiao,
+  onNextXiao,
+  onSetXiaoVolume,
+  onXiaoSpeakerToggle,
+}) {
   const { settings, update, reset } = useGlassSettings()
   const [isOpen, setIsOpen] = useState(false)
   const panelRef = useRef(null)
@@ -39,7 +55,7 @@ export default function GlassSettingsPanel() {
       {isOpen && (
         <div
           ref={panelRef}
-          className="fixed right-4 top-16 z-50 w-[280px] rounded-2xl p-4"
+          className="fixed right-4 top-16 z-50 max-h-[calc(100vh-5rem)] w-[320px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl p-4"
           style={{
             background: 'rgba(255,255,255,0.66)',
             border: '1px solid rgba(255,255,255,0.46)',
@@ -259,6 +275,25 @@ export default function GlassSettingsPanel() {
               />
             </div>
           </div>
+
+          {xiaoSettings && (
+            <XiaoMusicSettingsControls
+              settings={xiaoSettings}
+              devices={xiaoDevices}
+              status={xiaoStatus}
+              busy={xiaoBusy}
+              currentTrack={currentTrack}
+              onSettingsChange={onXiaoSettingsChange}
+              onDetectDevices={onDetectXiaoDevices}
+              onRefreshStatus={onRefreshXiaoStatus}
+              onPlayCurrent={onPlayCurrentOnXiao}
+              onStop={onStopXiao}
+              onPrevious={onPreviousXiao}
+              onNext={onNextXiao}
+              onSetVolume={onSetXiaoVolume}
+              onSpeakerToggle={onXiaoSpeakerToggle}
+            />
+          )}
 
           <button
             onClick={reset}

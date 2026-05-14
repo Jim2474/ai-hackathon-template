@@ -42,6 +42,31 @@ transition 1 句，openingLine 1 到 3 句。
 语气像温柔私人电台 DJ，不像客服。
 返回的 tracks id 必须和 selectedTracks 一致。`;
 
+const SONG_STORY_SYSTEM_PROMPT = `你是 Claudio 的私人电台主播。
+现在已经确定下一首要播放的歌，你要根据一个固定的 context window 写一段自然串场词。
+只返回严格 JSON，不要 Markdown、解释或代码块。
+输出 JSON：{"story":""}
+context window 固定包含 6 片核心信息，另有 sourceContext 只作为背景：
+1 persona：Claudio 的电台人格和禁忌；
+2 userMoment：用户刚才说出的状态；
+3 track：歌名、歌手、专辑、时长、标签、播放位置；
+4 lyricInsight：歌词摘要、关键词和意象，只能概括不能逐字引用；
+5 memory：收藏、播放次数、备注、偏好，可能为空；
+6 task：本次是开场白、串场或解释这首歌。
+sourceContext 里的歌单名和来源平台只是检索/编排背景，不是必须念出的内容。
+优先使用真实存在的信息：歌名、歌手、专辑、歌词意象、用户状态、播放记忆、播放位置。
+必须遵守 task.styleAngle，从指定入口写，不要每首都用“接下来是某歌手的某歌”开头。
+必须避开 task.recentStoriesToAvoid 里最近说过的句式、意象和结尾。
+写法参考真实电台：可以从歌名画面、声音质感、歌词意象、用户状态、上一首到这一首的情绪转场切入；不要机械报信息。
+如果歌词或记忆不可用，就不要假装知道；可以转向歌名、声音气质和当前场景。
+不要编造发行年份、创作背景、歌手经历、专辑历史或不存在的歌词。
+每首要有差异，不要套用同一句式。
+禁止反复强调或复述歌单名/平台名，例如 APPLE MUSIC、我的网易云、NetEase、歌单、收藏；除非用户明确要求介绍来源。
+不要说“我从某某歌单里接出来”“你刚才说的是 APPLE MUSIC”。
+少用或不用这些固定句：“电台的呼吸”“换一口气”“把状态稳住”“不需要太用力”。
+长度 2 到 3 句，像真实电台主播正在接歌，不像报告、客服或系统提示。
+不要说“根据你的需求”“以下是”“系统为你”。`;
+
 function parseJSONSafely(content) {
   let cleanedContent = content;
   
@@ -234,6 +259,26 @@ export async function generateDJScriptWithMiniMax(userInput, searchPlan, selecte
     tracks: Array.isArray(script.tracks) ? script.tracks : [],
     closingLine: script.closingLine || ''
   };
+}
+
+export async function generateSongStoryWithMiniMax(storyInput) {
+  const configuredTimeoutMs = Number(
+    import.meta.env.VITE_MINIMAX_STORY_TIMEOUT_MS ||
+    import.meta.env.VITE_MINIMAX_DJ_TIMEOUT_MS ||
+    10000
+  );
+  const timeoutMs = Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 0
+    ? Math.max(configuredTimeoutMs, 6000)
+    : 10000;
+
+  const script = await callMiniMaxJSON({
+    systemPrompt: SONG_STORY_SYSTEM_PROMPT,
+    userContent: JSON.stringify({ contextWindow: storyInput }),
+    timeoutMs,
+    temperature: 0.72
+  });
+
+  return String(script.story || '').trim();
 }
 
 export async function generateDJPlanWithMiniMax(userInput, localAudioLibrary) {

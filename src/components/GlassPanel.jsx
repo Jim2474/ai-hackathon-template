@@ -1,5 +1,3 @@
-import { Component } from 'react'
-import LiquidGlass from 'liquid-glass-react'
 import { useGlassSettings } from './GlassSettings'
 
 const PRESETS = {
@@ -41,83 +39,30 @@ const PRESETS = {
   },
 }
 
-class GlassErrorBoundary extends Component {
-  state = { hasError: false }
-
-  static getDerivedStateFromError() {
-    return { hasError: true }
-  }
-
-  componentDidCatch(error) {
-    console.warn('LiquidGlass failed, hiding refraction layer:', error?.message)
-  }
-
-  render() {
-    if (this.state.hasError) return null
-    return this.props.children
-  }
-}
-
 function LiquidGlassLayer({ preset, settings }) {
   if (!settings.enabled) return null
 
   const base = PRESETS[preset] || PRESETS.panel
-  const glassKey = [
-    preset,
-    settings.enabled,
-    settings.mode || base.mode,
-    settings.opacity,
-    settings.blurAmount,
-    settings.displacementScale,
-    settings.saturation,
-    settings.aberrationIntensity,
-    settings.elasticity,
-  ].join('-')
-  const glassProps = {
-    ...base,
-    blurAmount: settings.blurAmount ?? base.blurAmount,
-    displacementScale: settings.displacementScale ?? base.displacementScale,
-    saturation: settings.saturation ?? base.saturation,
-    aberrationIntensity: settings.aberrationIntensity ?? base.aberrationIntensity,
-    elasticity: settings.elasticity ?? base.elasticity,
-    mode: settings.mode || base.mode,
-  }
+  const opacity = settings.opacity ?? 0.96
+  const displacement = settings.displacementScale ?? base.displacementScale
+  const aberration = settings.aberrationIntensity ?? base.aberrationIntensity
 
   return (
     <div
       className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"
     >
-      <GlassErrorBoundary>
-        <LiquidGlass
-          key={glassKey}
-          {...glassProps}
-          padding="0"
-          className="pointer-events-none"
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            width: '100%',
-            height: '100%',
-            opacity: settings.opacity ?? 0.96,
-          }}
-        >
-          <span
-            aria-hidden="true"
-            style={{
-              display: 'block',
-              width: '100%',
-              height: '100%',
-              minHeight: '100%',
-              background: `
-                radial-gradient(circle at 18% 12%, rgba(255,255,255,0.36), transparent 28%),
-                radial-gradient(circle at 84% 86%, rgba(124,92,255,0.28), transparent 32%),
-                linear-gradient(135deg, rgba(255,255,255,0.32), rgba(255,255,255,0.08) 42%, rgba(34,211,238,0.18))
-              `,
-            }}
-          />
-        </LiquidGlass>
-      </GlassErrorBoundary>
+      <span
+        aria-hidden="true"
+        className="absolute inset-0 rounded-[inherit]"
+        style={{
+          opacity,
+          background: `
+            radial-gradient(circle at 18% 12%, rgba(255,255,255,0.38), transparent ${Math.min(42, 18 + displacement / 8)}%),
+            radial-gradient(circle at 84% 86%, rgba(124,92,255,0.22), transparent ${Math.min(46, 24 + aberration * 3)}%),
+            linear-gradient(135deg, rgba(255,255,255,0.30), rgba(255,255,255,0.08) 42%, rgba(34,211,238,0.16))
+          `,
+        }}
+      />
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 rounded-[inherit]"
@@ -133,7 +78,7 @@ function LiquidGlassLayer({ preset, settings }) {
             radial-gradient(circle at 50% 0%, rgba(255,255,255,0.20), transparent 38%)
           `,
           mixBlendMode: 'screen',
-          opacity: Math.min(0.9, (settings.opacity ?? 0.96) * 0.82),
+          opacity: Math.min(0.9, opacity * 0.82),
         }}
       />
     </div>

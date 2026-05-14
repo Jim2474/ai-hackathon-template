@@ -3,6 +3,53 @@ let currentTtsAudio = null;
 let currentTtsAbortController = null;
 let currentTtsStopHandler = null;
 
+export const MINIMAX_DJ_VOICE_PRESETS = {
+  privateRadioFemale: {
+    voiceId: 'Chinese (Mandarin)_Warm_Girl',
+    speed: 1.08,
+    pitch: -1,
+    label: '温暖女声，私人电台感'
+  },
+  lateNightFemale: {
+    voiceId: 'Chinese (Mandarin)_Wise_Women',
+    speed: 1.04,
+    pitch: -1,
+    label: '阅历姐姐，深夜电台感'
+  },
+  brightFemale: {
+    voiceId: 'Chinese (Mandarin)_Sweet_Lady',
+    speed: 1.06,
+    pitch: 0,
+    label: '甜美女声，更明亮'
+  },
+  privateRadioMale: {
+    voiceId: 'Chinese (Mandarin)_Radio_Host',
+    speed: 1.06,
+    pitch: -1,
+    label: '电台男主播，稍柔和'
+  },
+  warmHost: {
+    voiceId: 'Chinese (Mandarin)_Gentleman',
+    speed: 1.04,
+    pitch: -1,
+    label: '温润男声，更像私人陪伴'
+  },
+  announcer: {
+    voiceId: 'Chinese (Mandarin)_Male_Announcer',
+    speed: 1.08,
+    pitch: 0,
+    label: '播报男声，更清晰正式'
+  },
+  lyrical: {
+    voiceId: 'Chinese (Mandarin)_Lyrical_Voice',
+    speed: 1.02,
+    pitch: -1,
+    label: '抒情男声，更柔和'
+  }
+};
+
+const DEFAULT_DJ_VOICE = MINIMAX_DJ_VOICE_PRESETS.lateNightFemale;
+
 function stopCurrentTtsAudio() {
   if (currentTtsAbortController) {
     currentTtsAbortController.abort();
@@ -53,11 +100,11 @@ function getBrowserVoices() {
   });
 }
 
-async function pickChineseFemaleVoice() {
+async function pickChinesePresenterVoice() {
   const voices = await getBrowserVoices();
   const chineseVoices = voices.filter((voice) => /zh-(CN|HK|TW)|Chinese|Mandarin|普通话|中文/i.test(`${voice.lang} ${voice.name}`));
-  const femaleHints = /(female|woman|girl|女|xiaojing|xiaoxiao|huihui|yaoyao|xiaoyi|xiaobei|xiaoni|xiaohan|xiaomeng|xiaomo)/i;
-  return chineseVoices.find((voice) => femaleHints.test(voice.name)) || chineseVoices[0] || null;
+  const presenterHints = /(female|woman|girl|xiaoxiao|xiaoyi|huihui|yaoyao|xiaobei|xiaoni|xiaohan|xiaomeng|xiaomo|女|温暖|少女|姐姐|主播|朗读)/i;
+  return chineseVoices.find((voice) => presenterHints.test(voice.name)) || chineseVoices[0] || null;
 }
 
 // 浏览器原生语音合成
@@ -70,7 +117,7 @@ const speakWithBrowser = async (text, options = {}) => {
   }
 
   window.speechSynthesis.cancel();
-  const selectedVoice = await pickChineseFemaleVoice();
+  const selectedVoice = await pickChinesePresenterVoice();
 
   return new Promise((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text);
@@ -79,8 +126,8 @@ const speakWithBrowser = async (text, options = {}) => {
     }
 
     utterance.lang = 'zh-CN';
-    utterance.rate = options.rate || toNumber(import.meta.env.VITE_BROWSER_TTS_RATE, 0.92);
-    utterance.pitch = options.pitch || toNumber(import.meta.env.VITE_BROWSER_TTS_PITCH, 1.05);
+    utterance.rate = options.rate || toNumber(import.meta.env.VITE_BROWSER_TTS_RATE, 1.04);
+    utterance.pitch = options.pitch || toNumber(import.meta.env.VITE_BROWSER_TTS_PITCH, 1.02);
     utterance.volume = toNumber(import.meta.env.VITE_BROWSER_TTS_VOLUME, 1);
     
     utterance.onend = () => {
@@ -129,10 +176,11 @@ const speakWithMiniMax = async (text, options = {}) => {
   const apiKey = import.meta.env.VITE_MINIMAX_TTS_API_KEY || import.meta.env.VITE_MINIMAX_API_KEY;
   const baseUrl = (import.meta.env.VITE_MINIMAX_TTS_BASE_URL || 'https://api.minimaxi.com/v1').trim().replace(/[`'"]/g, '');
   const model = import.meta.env.VITE_MINIMAX_TTS_MODEL || 'speech-2.8-turbo';
-  const voiceId = import.meta.env.VITE_MINIMAX_TTS_VOICE_ID || 'female-chengshu';
-  const speed = toNumber(options.rate || import.meta.env.VITE_MINIMAX_TTS_SPEED, 0.92);
+  const voiceId = import.meta.env.VITE_MINIMAX_TTS_VOICE_ID || DEFAULT_DJ_VOICE.voiceId;
+  const speed = toNumber(options.rate || import.meta.env.VITE_MINIMAX_TTS_SPEED, DEFAULT_DJ_VOICE.speed);
   const volume = toNumber(import.meta.env.VITE_MINIMAX_TTS_VOLUME, 1);
-  const pitch = toNumber(import.meta.env.VITE_MINIMAX_TTS_PITCH, 0);
+  const pitch = toNumber(import.meta.env.VITE_MINIMAX_TTS_PITCH, DEFAULT_DJ_VOICE.pitch);
+  const emotion = String(import.meta.env.VITE_MINIMAX_TTS_EMOTION || '').trim();
   const useLocalProxy = import.meta.env.VITE_MINIMAX_TTS_USE_PROXY !== 'false';
 
   if (!useLocalProxy && !apiKey) {
@@ -162,7 +210,8 @@ const speakWithMiniMax = async (text, options = {}) => {
         voice_id: voiceId,
         speed: Math.min(2, Math.max(0.5, speed)),
         vol: Math.min(10, Math.max(0.1, volume)),
-        pitch: Math.min(12, Math.max(-12, pitch))
+        pitch: Math.min(12, Math.max(-12, pitch)),
+        ...(emotion ? { emotion } : {})
       },
       audio_setting: {
         sample_rate: 32000,
