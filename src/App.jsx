@@ -20,6 +20,7 @@ import {
   getXiaoMusicDevices,
   getXiaoMusicStatus,
   getXiaoPlayableUrl,
+  ensureXiaoMusicNativeTts,
   loadXiaoMusicSettings,
   nextXiaoMusic,
   playXiaoMusicTts,
@@ -426,9 +427,9 @@ export default function App() {
     }
   }
 
-  const buildXiaoDjTtsText = (text) => {
+  const buildXiaoDjTtsText = (text, track = null) => {
     const cleaned = String(text || '').replace(/\s+/g, ' ').trim()
-    if (cleaned.length <= 44) return cleaned
+    if (cleaned.length <= 16) return cleaned
 
     const sentences = cleaned
       .split(/(?<=[。！？!?；;])/)
@@ -436,13 +437,15 @@ export default function App() {
       .filter(Boolean)
     const spokenSentence = sentences.find(sentence =>
       sentence.length >= 12 &&
-      sentence.length <= 44 &&
+      sentence.length <= 18 &&
       !/首先听到|接下来听到|来自|专辑|名字本身|歌名/.test(sentence)
-    ) || sentences.find(sentence => sentence.length >= 8 && sentence.length <= 52)
+    ) || sentences.find(sentence => sentence.length >= 8 && sentence.length <= 22)
 
-    const compact = spokenSentence || cleaned
-    if (compact.length <= 52) return compact
-    return `${compact.slice(0, 48).replace(/[，,、：:；;。！？!?]+$/g, '')}。`
+    const title = String(track?.title || '').replace(/\s*[（(].*?[）)]/g, '').trim()
+    const titleLine = title ? `先听《${title.slice(0, 8)}》。` : ''
+    const compact = spokenSentence || titleLine || cleaned
+    if (compact.length <= 22) return compact
+    return `${compact.slice(0, 18).replace(/[，,、：:；;。！？!?]+$/g, '')}。`
   }
 
   const handleDetectXiaoDevices = async () => {
@@ -495,13 +498,16 @@ export default function App() {
 
       if (settings.speakDjBeforeTrack && djText) {
         try {
-          const xiaoDjText = buildXiaoDjTtsText(djText)
+          const xiaoDjText = buildXiaoDjTtsText(djText, track)
           await stopXiaoMusic(settings, settings.deviceDid).catch(() => {})
           await new Promise(resolve => setTimeout(resolve, 300))
           setXiaoMessage('正在让小爱播放 DJ 文案...', 'busy')
+          const ttsMode = await ensureXiaoMusicNativeTts(settings)
           console.info('[Claudio XiaoMusic] pushing DJ TTS ' + JSON.stringify({
             track: track.title,
             source: djStory.source,
+            mode: ttsMode.mode,
+            ttsModeChanged: ttsMode.changed,
             originalChars: djText.length,
             chars: xiaoDjText.length,
             preview: xiaoDjText.slice(0, 80)

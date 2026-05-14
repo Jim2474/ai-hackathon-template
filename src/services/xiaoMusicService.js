@@ -1,5 +1,6 @@
 const XIAOMUSIC_SETTINGS_KEY = 'claudio_xiaomusic_settings_v1'
 const XIAOMUSIC_PROXY_BASE = '/api/xiaomusic'
+const nativeTtsReadyByBaseUrl = new Map()
 
 export const XIAOMUSIC_PLAYBACK_TARGETS = {
   browser: 'browser',
@@ -130,6 +131,36 @@ export async function getXiaoMusicDevices(settings) {
       ? data.devices
       : []
   return devices.map(normalizeXiaoMusicDevice).filter(device => device.did)
+}
+
+export async function getXiaoMusicServerSettings(settings) {
+  return requestXiaoMusic('/getsetting?need_device_list=false', { settings })
+}
+
+export async function updateXiaoMusicServerSettings(settings, patch) {
+  return requestXiaoMusic('/api/system/modifiysetting', {
+    method: 'POST',
+    settings,
+    body: patch
+  })
+}
+
+export async function ensureXiaoMusicNativeTts(settings) {
+  const normalized = normalizeXiaoMusicSettings(settings)
+  const cacheKey = `${normalized.baseUrl}|${normalized.username}`
+  if (nativeTtsReadyByBaseUrl.get(cacheKey)) {
+    return { changed: false, mode: 'cached-native' }
+  }
+
+  const serverSettings = await getXiaoMusicServerSettings(normalized)
+  if (safeText(serverSettings?.edge_tts_voice)) {
+    await updateXiaoMusicServerSettings(normalized, { edge_tts_voice: '' })
+    nativeTtsReadyByBaseUrl.set(cacheKey, true)
+    return { changed: true, mode: 'native' }
+  }
+
+  nativeTtsReadyByBaseUrl.set(cacheKey, true)
+  return { changed: false, mode: 'native' }
 }
 
 export async function getXiaoMusicStatus(settings, did) {

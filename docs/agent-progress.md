@@ -57,6 +57,9 @@
 - 已确认小爱现在收到的是 `source:"minimax-plan"` 的 AI 串场词。
 - 已发现 xiaomusic 对长文本 TTS 极慢：111 字 AI 串场词会让 `/playtts` 到 `/playurl` 间隔超过 1 分钟。
 - 已修复小爱朗读版串场词过长问题：屏幕保留完整 Song Story，小爱端自动抽取/压缩成短句朗读。实测 92 字原文被压到 27 字，随后新的音乐 URL 正常推送。
+- 已进一步定位“小爱不播 DJ、等很久后直接放歌”的根因：当前 xiaomusic `edge_tts_voice=zh-CN-XiaoyiNeural`，`/playtts` 会先生成本地 MP3，再把 `http://192.168.0.140:58090/music/tmp/...mp3` 推给音箱；日志显示请求成功但音箱可能拿不到或不播这条本地 TTS 音频。
+- 已改为小爱 DJ 播放前自动关闭 xiaomusic 的 Edge-TTS MP3 模式，让 `/playtts` 走小爱原生 MiNA TTS 通道。
+- 已把音箱朗读版 DJ 词进一步压缩到约 16-22 字以内，降低 xiaomusic `/playtts` 内部按字数等待导致的切歌延迟；屏幕 Song Story 仍保留完整版本。
 
 ## Changed Files
 
@@ -69,9 +72,11 @@
 - `src/services/xiaoMusicService.js`：新增 xiaomusic 客户端、设置持久化、设备/播放/TTS/音量/状态接口。
 - `src/services/xiaoMusicService.js`：新增 `ttsLeadMs` 设置项，用于控制 DJ TTS 和音乐推送之间的短缓冲。
 - `src/services/xiaoMusicService.js`：`stopXiaoMusic()` 改为调用 `/device/stop`，并把 `ttsLeadMs` 默认值/上限调整为适配 xiaomusic `/playtts` 同步等待机制。
+- `src/services/xiaoMusicService.js`：新增读取/修改 xiaomusic 服务设置的接口，并在播放 DJ TTS 前确保 `edge_tts_voice` 为空，避免 Edge-TTS 本地 MP3 模式吞掉串场词。
 - `src/components/XiaoMusicPanel.jsx`：右上角设置里的“最短DJ间隔”改为“推歌缓冲”，范围从 0-8 秒改为 0-1.5 秒。
 - `src/services/songStoryService.js`：MiniMax 开启时不再复用旧 local Song Story 缓存；网易云歌曲也会优先使用 `track.songIntro`。
 - `src/App.jsx`：小爱 TTS 使用 `buildXiaoDjTtsText()` 把长串场词压成适合音箱朗读的短句；控制台日志输出 `source/originalChars/chars/preview`。
+- `src/App.jsx`：小爱 TTS 发送前会先切到 xiaomusic 原生 TTS 模式，并把音箱朗读文本压到更短，减少“等很久才播歌”的体感。
 - `vite.config.js`：新增 `/api/xiaomusic` 代理；复用请求体读取函数；关闭 dev 依赖预打包以避开 Vite 启动崩溃。
 - `src/components/GlassPanel.jsx`：移除 `liquid-glass-react` 顶层导入，保留纯 CSS 玻璃视觉层，解决首屏白屏。
 - `src/services/contextBuilder.js`：新增 Song Story context window 组装。
@@ -85,7 +90,7 @@
 
 - 用户反馈小爱音箱已经成功播放过测试音频，说明路线和本机服务配置方向可行。
 - 用户反馈推送音乐速度慢，已定位到原逻辑最长等待 9 秒；后续 1.2 秒又过短，可能导致音乐打断 DJ TTS。当前改为默认最短 2.8 秒、自动估算封顶 5.5 秒。
-- 用户反馈 DJ 词仍没有在小爱音箱播放；本轮已定位为两个前端问题叠加：AI track note 没被优先用于网易云 Song Story，以及小爱朗读文本过长导致 `/playtts` 阻塞很久。当前已修复并用浏览器日志确认 `source:"minimax-plan"` 进入小爱 TTS，且短句 TTS 后跟随新的 `/playurl`。
+- 用户反馈 DJ 词仍没有在小爱音箱播放；已定位为三层问题叠加：AI track note 没被优先用于网易云 Song Story、小爱朗读文本过长导致 `/playtts` 阻塞很久、xiaomusic Edge-TTS 模式把 TTS 转成本地 MP3 URL 后音箱可能不播放。当前已改成自动关闭 Edge-TTS，优先使用小爱原生 TTS。
 - 用户反馈电脑暂停键不能暂停小爱；已修复，用户已确认正常暂停。
 - xiaomusic 的 `/cmd` 是否能完全等价“暂停”取决于音箱和 xiaomusic 版本；如果 `停止播放` 无效，下一步要改成更贴合该版本的控制接口或命令文本。
 - 如果歌曲地址是 `/audio/...`、`blob:` 或本机 localhost 地址，小爱音箱通常访问不到；当前逻辑会阻止这类 URL 推送，并提示原因。
@@ -95,6 +100,6 @@
 
 1. 打开 `http://localhost:5173/`，点击右上角齿轮，确认小爱音箱详细设置在设置面板里。
 2. 在小爱播放开关打开时生成歌单，观察页面是否出现“DJ 文案已发送，X 秒后推歌...”，同时听小爱是否播 DJ 词。
-3. 如果页面出现该状态但音箱仍不说话，下一步不要继续改 Claudio 前端请求链路；应测试 xiaomusic 原生 Web UI 的 TTS 是否出声，或改成 MiniMax TTS 生成音频后再推 `/playurl`。
-4. 用户下一次实测时，重点听“小爱先说一句短串场，再播歌”。如果仍然完全不出声，直接看浏览器控制台 `[Claudio XiaoMusic] pushing DJ TTS ...` 那一行的 `preview` 和 `chars`。
-5. 如果日志显示已经推了短句但音箱无声，再测试 xiaomusic 原生 Web UI 的 TTS 是否出声；若原生也不出声，优先检查 xiaomusic 的 TTS 设置/音箱型号兼容。
+3. 用户下一次实测时，重点听“小爱先说一句短串场，再播歌”。如果仍然完全不出声，直接看浏览器控制台 `[Claudio XiaoMusic] pushing DJ TTS ...` 那一行的 `mode/native`、`preview` 和 `chars`。
+4. 如果日志显示已进入 native TTS 但音箱仍无声，下一步不要继续改 Claudio 前端请求链路；应进入 xiaomusic 原生 Web UI 测试 `/playtts` 或检查该音箱型号的 MiNA TTS 兼容性。
+5. 如果 native TTS 能响但仍慢，再考虑绕过 xiaomusic `/playtts` 的内部等待，改成可配置的异步 TTS + 延迟推歌流程。
