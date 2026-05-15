@@ -406,6 +406,8 @@ export default function App() {
     setTrackTime(seekTime)
   }
 
+  const preloadedTransitionRef = useRef(null)
+
   function requestTransition(track) {
     if (!track) return
     transitionAbortRef.current?.abort()
@@ -413,13 +415,39 @@ export default function App() {
     transitionAbortRef.current = controller
 
     streamChatDjMessage(
-      `[系统：歌曲已切换到 "${track.title}" - ${track.artist || '未知'}，请用 speak 动作说一句简短的串场词。]`,
+      `[系统：歌曲已切换到 "${track.title}" - ${track.artist || '未知'}，请用 speak 动作说一段自然的串场词。像深夜电台 DJ 一样，简短介绍这首歌，回应用户当前的情绪状态，2-4句话，不要重复之前的句式。]`,
       {
         signal: controller.signal,
         onEvent: (payload) => {
           const { event, data } = payload
           if (event === 'sentence_ready' && data?.text) {
+            setMessages(prev => [...prev, makeMessage('assistant', data.text)])
             enqueueVoice(data)
+          }
+        }
+      }
+    ).catch(() => {})
+  }
+
+  function preloadNextTransition() {
+    if (queue.length === 0) return
+    const currentIndex = queue.findIndex(t => t.id === currentTrack?.id)
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % queue.length : 0
+    const nextTrack = queue[nextIndex]
+    if (!nextTrack) return
+
+    preloadedTransitionRef.current?.abort()
+    const controller = new AbortController()
+    preloadedTransitionRef.current = { track: nextTrack, controller }
+
+    streamChatDjMessage(
+      `[系统：下一首歌是 "${nextTrack.title}" - ${nextTrack.artist || '未知'}，请提前准备好一段串场词。像深夜电台 DJ 一样，简短介绍这首歌，2-4句话。用 speak 动作输出。]`,
+      {
+        signal: controller.signal,
+        onEvent: (payload) => {
+          const { event, data } = payload
+          if (event === 'sentence_ready' && data?.text) {
+            preloadedTransitionRef.current = { ...preloadedTransitionRef.current, ready: data }
           }
         }
       }
@@ -448,7 +476,17 @@ export default function App() {
       .then(() => {
         setError('')
         setPhase('playing')
-        requestTransition(track)
+
+        const preloaded = preloadedTransitionRef.current
+        if (preloaded?.ready && preloaded.track?.id === track.id) {
+          setMessages(prev => [...prev, makeMessage('assistant', preloaded.ready.text)])
+          enqueueVoice(preloaded.ready)
+          preloadedTransitionRef.current = null
+        } else {
+          requestTransition(track)
+        }
+
+        setTimeout(() => preloadNextTransition(), 2000)
       })
       .catch(() => {
         setPhase('paused')
@@ -859,20 +897,20 @@ export default function App() {
             >
               {queue.length > 0 && (
                 <div className="mb-2">
-                  <div className="mb-2 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setIsQueueExpanded(prev => !prev)}
-                      className="flex items-center gap-2 text-xs font-medium"
-                      style={{ color: '#30323a', background: 'none', border: 'none', cursor: 'pointer' }}
-                    >
+                  <button
+                    type="button"
+                    onClick={() => setIsQueueExpanded(prev => !prev)}
+                    className="mb-2 flex w-full items-center justify-between rounded-2xl px-3.5 py-2 text-left text-xs font-medium transition-all"
+                    style={{ background: 'rgba(255,255,255,0.34)', color: '#30323a', border: '1px solid rgba(255,255,255,0.22)' }}
+                  >
+                    <span className="flex items-center gap-2">
                       <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#7C5CFF' }} />
                       Queue · {queue.length} tracks
-                      <span className="text-[10px]" style={{ color: '#6c6f78' }}>
-                        {isQueueExpanded ? '▾' : '▸'}
-                      </span>
-                    </button>
-                  </div>
+                    </span>
+                    <span className="text-[10px]" style={{ color: '#6c6f78' }}>
+                      {isQueueExpanded ? '收起 ▾' : '展开 ▸'}
+                    </span>
+                  </button>
                   {isQueueExpanded && (
                     <div className="max-h-28 space-y-1 overflow-y-auto rounded-2xl p-1.5" style={{ background: 'rgba(255,255,255,0.24)', border: '1px solid rgba(255,255,255,0.20)' }}>
                       {queue.slice(0, 8).map((track, index) => {
