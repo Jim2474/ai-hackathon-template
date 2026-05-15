@@ -6,6 +6,7 @@ export default function GlassSettingsPanel({
   xiaoSettings,
   xiaoDevices,
   xiaoStatus,
+  xiaoDebug,
   xiaoBusy,
   currentTrack,
   onXiaoSettingsChange,
@@ -281,6 +282,7 @@ export default function GlassSettingsPanel({
               settings={xiaoSettings}
               devices={xiaoDevices}
               status={xiaoStatus}
+              debug={xiaoDebug}
               busy={xiaoBusy}
               currentTrack={currentTrack}
               onSettingsChange={onXiaoSettingsChange}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import NeteaseLoginPanel from './components/NeteaseLoginPanel'
-import NeteaseLibraryPanel from './components/NeteaseLibraryPanel'
+import NeteaseCenter from './components/NeteaseCenter'
 import GlassPanel from './components/GlassPanel'
 import { GlassSettingsProvider, useGlassSettings } from './components/GlassSettings'
 import GlassSettingsPanel from './components/GlassSettingsPanel'
@@ -19,20 +19,20 @@ import { speakDJLine, stopSpeaking } from './services/ttsService'
 import {
   getXiaoMusicDevices,
   getXiaoMusicStatus,
-  getXiaoPlayableUrl,
-  ensureXiaoMusicNativeTts,
-  estimateXiaoDjAudioDurationMs,
-  generateXiaoDjAudio,
   loadXiaoMusicSettings,
   nextXiaoMusic,
-  playXiaoMusicTts,
-  playXiaoMusicUrl,
   previousXiaoMusic,
   saveXiaoMusicSettings,
   setXiaoMusicVolume,
-  stopXiaoMusic,
   XIAOMUSIC_PLAYBACK_TARGETS,
 } from './services/xiaoMusicService'
+import {
+  cancelXiaoJob,
+  getLastXiaoDebugSnapshot,
+  isXiaoPlaybackCancelled,
+  pauseXiaoPlayback,
+  playOnXiao,
+} from './services/xiaoPlaybackController'
 import { fadeVolume } from './utils/audioUtils'
 
 const INTRO_VOLUME = 0.15
@@ -251,7 +251,7 @@ export default function App() {
   const [activeMessageId, setActiveMessageId] = useState(null)
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false)
   const [isDjVoiceEnabled, setIsDjVoiceEnabled] = useState(true)
-  const [isNeteaseLibraryOpen, setIsNeteaseLibraryOpen] = useState(false)
+  const [isNeteaseCenterOpen, setIsNeteaseCenterOpen] = useState(false)
   const [xiaoSettings, setXiaoSettings] = useState(() => loadXiaoMusicSettings())
   const [xiaoDevices, setXiaoDevices] = useState([])
   const [xiaoBusy, setXiaoBusy] = useState(false)
@@ -260,6 +260,7 @@ export default function App() {
     message: '未连接',
     detail: null
   })
+  const [xiaoDebug, setXiaoDebug] = useState(() => getLastXiaoDebugSnapshot())
 
   const audioRef = useRef(null)
   const planRef = useRef(null)
@@ -280,6 +281,7 @@ export default function App() {
   useEffect(() => {
     return () => {
       introSessionRef.current += 1
+      cancelXiaoJob('页面关闭，取消小爱播放任务', setXiaoPlaybackDebug)
       stopSpeaking()
       if (audioRef.current) {
         audioRef.current.pause()
@@ -369,6 +371,10 @@ export default function App() {
 
   const setXiaoMessage = (message, type = 'idle', detail = null) => {
     setXiaoStatus({ type, message, detail })
+  }
+
+  const setXiaoPlaybackDebug = (snapshot) => {
+    setXiaoDebug(snapshot || getLastXiaoDebugSnapshot())
   }
 
   const shouldUseXiaoSpeaker = () => {
@@ -505,81 +511,33 @@ export default function App() {
 
   const sendTrackToXiao = async (track, options = {}) => {
     const settings = xiaoSettingsRef.current
-    if (!settings.deviceDid) {
-      throw new Error('请先在小爱音箱面板选择设备')
-    }
-
-    const playableUrl = getXiaoPlayableUrl(track)
-    if (!playableUrl) {
-      throw new Error('这首歌的地址小爱音箱访问不到。网易云公网 URL 更适合推送，本地 /audio 或 blob 音频需要局域网地址。')
-    }
-
-    await withXiaoBusy(async () => {
+    setXiaoBusy(true)
+    try {
+      const reservedJobId = cancelXiaoJob(`准备推送 ${track?.title || '当前歌曲'}，取消旧任务`, setXiaoPlaybackDebug)
       const djStory = settings.speakDjBeforeTrack
         ? await waitForXiaoStoryText(track, options)
         : { text: '', source: 'off' }
-      const djText = djStory.text
 
-      if (settings.speakDjBeforeTrack && djText) {
-        try {
-          await stopXiaoMusic(settings, settings.deviceDid).catch(() => {})
-          await new Promise(resolve => setTimeout(resolve, 300))
-          const xiaoDjAudioText = buildXiaoDjAudioText(djText, track)
-          setXiaoMessage('正在生成 Claudio DJ 声音...', 'busy')
-          console.info('[Claudio XiaoMusic] pushing DJ TTS ' + JSON.stringify({
-            track: track.title,
-            source: djStory.source,
-            mode: 'minimax-audio-url',
-            originalChars: djText.length,
-            chars: xiaoDjAudioText.length,
-            preview: xiaoDjAudioText.slice(0, 80)
-          }))
-          const djAudio = await generateXiaoDjAudio(settings, xiaoDjAudioText)
-          console.info('[Claudio XiaoMusic] pushing DJ audio URL ' + JSON.stringify({
-            track: track.title,
-            url: djAudio.url,
-            bytes: djAudio.bytes,
-            durationMs: djAudio.durationMs,
-            voiceId: djAudio.voiceId
-          }))
-          await playXiaoMusicUrl(settings, settings.deviceDid, djAudio.url)
-          const ttsLeadMs = Math.max(0, Math.min(1500, settings.ttsLeadMs || 0))
-          const sourceLabel = String(djStory.source || '').includes('minimax') ? 'AI' : '本地'
-          const djWaitMs = Math.max(estimateXiaoDjAudioDurationMs(xiaoDjAudioText), Number(djAudio.durationMs || 0)) + ttsLeadMs
-          setXiaoMessage(`${sourceLabel} Claudio DJ 声音已发送，${(djWaitMs / 1000).toFixed(1)} 秒后推歌...`, 'busy', djAudio)
-          await new Promise(resolve => setTimeout(resolve, djWaitMs))
-        } catch (error) {
-          console.warn('[Claudio XiaoMusic] DJ audio failed, falling back to native TTS', error)
-          try {
-            const xiaoDjText = buildXiaoDjTtsText(djText, track)
-            const ttsMode = await ensureXiaoMusicNativeTts(settings)
-            setXiaoMessage('Claudio 声音生成失败，先用小爱朗读兜底...', 'busy')
-            console.info('[Claudio XiaoMusic] pushing fallback DJ TTS ' + JSON.stringify({
-              track: track.title,
-              mode: ttsMode.mode,
-              ttsModeChanged: ttsMode.changed,
-              chars: xiaoDjText.length,
-              preview: xiaoDjText.slice(0, 80)
-            }))
-            await playXiaoMusicTts(settings, settings.deviceDid, xiaoDjText)
-            const ttsLeadMs = Math.max(0, Math.min(1500, settings.ttsLeadMs || 0))
-            if (ttsLeadMs > 0) {
-              await new Promise(resolve => setTimeout(resolve, ttsLeadMs))
-            }
-          } catch (fallbackError) {
-            console.warn('[Claudio XiaoMusic] fallback DJ TTS failed', fallbackError)
-            setXiaoMessage(fallbackError.message || error.message || 'DJ 文案播放失败，继续推送音乐', 'error')
-          }
-        }
+      return await playOnXiao({
+        settings,
+        track,
+        djText: djStory.text,
+        djSource: djStory.source,
+        reason: options.reason || 'track-change',
+        reservedJobId,
+        buildAudioText: buildXiaoDjAudioText,
+        buildTtsText: buildXiaoDjTtsText,
+        onStatus: setXiaoMessage,
+        onDebug: setXiaoPlaybackDebug,
+      })
+    } catch (error) {
+      if (!isXiaoPlaybackCancelled(error)) {
+        setXiaoMessage(error.message || '小爱播放失败', 'error', getLastXiaoDebugSnapshot())
       }
-
-      console.info('[Claudio XiaoMusic] pushing music URL ' + JSON.stringify({
-        track: track.title,
-        url: playableUrl
-      }))
-      await playXiaoMusicUrl(settings, settings.deviceDid, playableUrl)
-      setXiaoMessage(`已推送 ${track.title || '当前歌曲'}`, 'ok', { track, url: playableUrl })
-    }, '正在推送到小爱...')
+      throw error
+    } finally {
+      setXiaoBusy(false)
+    }
   }
 
   const handlePlayCurrentOnXiao = async () => {
@@ -592,7 +550,8 @@ export default function App() {
       await sendTrackToXiao(currentTrack, {
         djText: getTrackStoryText(currentTrack, currentPlan, currentTrackIndex),
         plan: currentPlan,
-        index: currentTrackIndex
+        index: currentTrackIndex,
+        reason: 'manual-push-current'
       })
     } catch (error) {
       setXiaoMessage(error.message || '推送失败', 'error')
@@ -601,13 +560,14 @@ export default function App() {
 
   const handleStopXiao = async () => {
     await withXiaoBusy(async () => {
-      await stopXiaoMusic(xiaoSettingsRef.current, xiaoSettingsRef.current.deviceDid)
+      await pauseXiaoPlayback(xiaoSettingsRef.current, setXiaoPlaybackDebug)
       setXiaoMessage('已停止小爱播放', 'ok')
     }, '正在停止...')
       .catch((error) => setXiaoMessage(error.message || '停止失败', 'error'))
   }
 
   const handlePreviousXiao = async () => {
+    cancelXiaoJob('手动切到上一首，取消当前小爱推送任务', setXiaoPlaybackDebug)
     await withXiaoBusy(async () => {
       await previousXiaoMusic(xiaoSettingsRef.current, xiaoSettingsRef.current.deviceDid)
       setXiaoMessage('已发送上一首', 'ok')
@@ -616,6 +576,7 @@ export default function App() {
   }
 
   const handleNextXiao = async () => {
+    cancelXiaoJob('手动切到下一首，取消当前小爱推送任务', setXiaoPlaybackDebug)
     await withXiaoBusy(async () => {
       await nextXiaoMusic(xiaoSettingsRef.current, xiaoSettingsRef.current.deviceDid)
       setXiaoMessage('已发送下一首', 'ok')
@@ -752,6 +713,7 @@ export default function App() {
     setSpeechError('')
 
     if (!enabled) {
+      cancelXiaoJob('已切回电脑播放', setXiaoPlaybackDebug)
       setXiaoMessage('已切回电脑播放', 'idle')
       return
     }
@@ -767,9 +729,12 @@ export default function App() {
 
     if (currentTrack && xiaoSettingsRef.current.deviceDid) {
       sendTrackToXiao(currentTrack, {
-        djText: getTrackStoryText(currentTrack, currentPlan, currentTrackIndex)
+        djText: getTrackStoryText(currentTrack, currentPlan, currentTrackIndex),
+        reason: 'speaker-toggle'
       }).catch((error) => {
-        setXiaoMessage(error.message || '小爱推送失败', 'error')
+        if (!isXiaoPlaybackCancelled(error)) {
+          setXiaoMessage(error.message || '小爱推送失败', 'error')
+        }
       })
     }
   }
@@ -886,7 +851,7 @@ export default function App() {
       audioRef.current.pause()
     }
     if (shouldUseXiaoSpeaker() && xiaoSettingsRef.current.deviceDid) {
-      stopXiaoMusic(xiaoSettingsRef.current, xiaoSettingsRef.current.deviceDid)
+      pauseXiaoPlayback(xiaoSettingsRef.current, setXiaoPlaybackDebug)
         .then(() => setXiaoMessage('已停止小爱播放', 'ok'))
         .catch((error) => setXiaoMessage(error.message || '小爱停止失败', 'error'))
     }
@@ -1115,10 +1080,15 @@ export default function App() {
             djText: options.xiaoIntroText || '',
             djTextSource: plan?.djSource === 'minimax' && track?.songIntro ? 'minimax-plan' : '',
             plan,
-            index
+            index,
+            reason: options.xiaoReason || 'speaker-only-track-change'
           }).then(() => {
             resolve({ provider: 'xiaomusic', track })
           }).catch((error) => {
+            if (isXiaoPlaybackCancelled(error)) {
+              resolve({ provider: 'xiaomusic-cancelled', track })
+              return
+            }
             setAudioError(error.message || '小爱音箱播放失败。')
             setPhase('paused')
             reject(error)
@@ -1130,9 +1100,12 @@ export default function App() {
           djText: options.xiaoIntroText || '',
           djTextSource: plan?.djSource === 'minimax' && track?.songIntro ? 'minimax-plan' : '',
           plan,
-          index
+          index,
+          reason: options.xiaoReason || 'dual-track-change'
         }).catch((error) => {
-          setXiaoMessage(error.message || '小爱推送失败', 'error')
+          if (!isXiaoPlaybackCancelled(error)) {
+            setXiaoMessage(error.message || '小爱推送失败', 'error')
+          }
         })
       }
 
@@ -1327,6 +1300,7 @@ export default function App() {
     setAudioError('')
     setIsDjVoiceEnabled(true)
     setIsPlaylistOpen(false)
+    setIsNeteaseCenterOpen(false)
     latestUserInputRef.current = ''
 
     const plan = {
@@ -1487,6 +1461,7 @@ export default function App() {
           xiaoSettings={xiaoSettings}
           xiaoDevices={xiaoDevices}
           xiaoStatus={xiaoStatus}
+          xiaoDebug={xiaoDebug}
           xiaoBusy={xiaoBusy}
           currentTrack={currentTrack}
           onXiaoSettingsChange={updateXiaoSettings}
@@ -1563,11 +1538,11 @@ export default function App() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setIsNeteaseLibraryOpen(prev => !prev)}
+                    onClick={() => setIsNeteaseCenterOpen(prev => !prev)}
                     className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold"
                     style={{ background: 'rgba(255,255,255,0.48)', color: '#4a318e' }}
                   >
-                    我的网易云
+                    网易云中心
                   </button>
                 </div>
                 <SoundWaves isPlaying={phase === 'playing'} isPlanning={phase === 'planning'} isSpeaking={phase === 'intro'} />
@@ -1578,17 +1553,17 @@ export default function App() {
               ref={chatFeedRef}
               className="flex-1 space-y-3 overflow-y-auto px-5 pb-4 pt-2 sm:px-6"
             >
-              {isNeteaseLibraryOpen && (
-                <NeteaseLibraryPanel
-                  isOpen={isNeteaseLibraryOpen}
-                  onClose={() => setIsNeteaseLibraryOpen(false)}
+              {isNeteaseCenterOpen ? (
+                <NeteaseCenter
+                  isOpen={isNeteaseCenterOpen}
+                  onClose={() => setIsNeteaseCenterOpen(false)}
                   onPlayTracks={handlePlayNeteaseLibrary}
                 />
+              ) : (
+                chatMessages.map(renderChatMessage)
               )}
 
-              {chatMessages.map(renderChatMessage)}
-
-              {!currentPlan && phase === 'idle' && !isNeteaseLibraryOpen && (
+              {!currentPlan && phase === 'idle' && !isNeteaseCenterOpen && (
                 <NeteaseLoginPanel />
               )}
 

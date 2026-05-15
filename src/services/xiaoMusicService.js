@@ -18,7 +18,10 @@ export const DEFAULT_XIAOMUSIC_SETTINGS = {
   speakDjBeforeTrack: true,
   autoPushOnTrackChange: true,
   ttsLeadMs: 350,
-  volume: 60
+  volume: 60,
+  useMusicApiCompatibility: false,
+  forceStopCompatibility: false,
+  proxyDjAudioThroughXiaoMusic: true
 }
 
 function safeText(value) {
@@ -59,7 +62,10 @@ export function normalizeXiaoMusicSettings(settings = {}) {
     speakDjBeforeTrack: rawSettings.speakDjBeforeTrack !== false,
     autoPushOnTrackChange: rawSettings.autoPushOnTrackChange !== false,
     ttsLeadMs,
-    volume: Math.max(0, Math.min(100, Math.round(Number(rawSettings.volume ?? DEFAULT_XIAOMUSIC_SETTINGS.volume))))
+    volume: Math.max(0, Math.min(100, Math.round(Number(rawSettings.volume ?? DEFAULT_XIAOMUSIC_SETTINGS.volume)))),
+    useMusicApiCompatibility: rawSettings.useMusicApiCompatibility === true,
+    forceStopCompatibility: rawSettings.forceStopCompatibility === true,
+    proxyDjAudioThroughXiaoMusic: rawSettings.proxyDjAudioThroughXiaoMusic !== false
   }
 }
 
@@ -186,6 +192,54 @@ function buildClaudioPublicBaseUrl(serverSettings = {}) {
   }
 
   return window.location.origin
+}
+
+function encodeBase64Url(value) {
+  const text = safeText(value)
+  if (!text) return ''
+  if (typeof window !== 'undefined' && typeof window.btoa === 'function') {
+    return window.btoa(text)
+  }
+  return ''
+}
+
+function getServerOriginFromSettings(settings = {}, serverSettings = {}) {
+  const hostname = safeText(serverSettings.hostname)
+  const publicPort = safeText(serverSettings.public_port)
+  if (hostname) {
+    try {
+      const parsed = new URL(hostname)
+      return `${parsed.protocol}//${parsed.hostname}:${publicPort || parsed.port || '58090'}`
+    } catch {
+      // Fall through to the configured xiaomusic base URL.
+    }
+  }
+
+  const baseUrl = safeText(settings.baseUrl)
+  if (baseUrl) {
+    try {
+      const parsed = new URL(baseUrl)
+      return `${parsed.protocol}//${parsed.hostname}:${publicPort || parsed.port || '58090'}`
+    } catch {
+      // Fall through to empty.
+    }
+  }
+
+  return ''
+}
+
+export async function buildXiaoMusicProxyUrl(settings, url, options = {}) {
+  const safeUrl = safeText(url)
+  if (!safeUrl) return ''
+  const normalized = normalizeXiaoMusicSettings(settings)
+  if (!normalized.proxyDjAudioThroughXiaoMusic) return safeUrl
+
+  const serverSettings = options.serverSettings || await getXiaoMusicServerSettings(normalized)
+  const serverOrigin = getServerOriginFromSettings(normalized, serverSettings)
+  const encoded = encodeBase64Url(safeUrl)
+  if (!serverOrigin || !encoded) return safeUrl
+
+  return `${serverOrigin}/proxy?urlb64=${encodeURIComponent(encoded)}`
 }
 
 export function estimateXiaoDjAudioDurationMs(text, fallbackMs = 4500) {

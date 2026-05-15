@@ -37,6 +37,7 @@ export function XiaoMusicSettingsControls({
   settings,
   devices,
   status,
+  debug,
   busy,
   currentTrack,
   onSettingsChange,
@@ -182,6 +183,33 @@ export function XiaoMusicSettingsControls({
           </label>
         </div>
 
+        <div className="grid grid-cols-3 gap-2 text-[10px]" style={{ color: '#5f6470' }}>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={settings.proxyDjAudioThroughXiaoMusic}
+              onChange={(event) => onSettingsChange({ proxyDjAudioThroughXiaoMusic: event.target.checked })}
+            />
+            代理DJ音频
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={settings.useMusicApiCompatibility}
+              onChange={(event) => onSettingsChange({ useMusicApiCompatibility: event.target.checked })}
+            />
+            触屏兼容
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={settings.forceStopCompatibility}
+              onChange={(event) => onSettingsChange({ forceStopCompatibility: event.target.checked })}
+            />
+            强制停止
+          </label>
+        </div>
+
         <div className="flex items-center gap-2">
           <span className="w-16 text-[10px]" style={{ color: '#5f6470' }}>推歌缓冲</span>
           <input
@@ -217,6 +245,32 @@ export function XiaoMusicSettingsControls({
           <button type="button" disabled={busy || !settings.deviceDid} onClick={onStop} className="rounded-xl px-2 py-2 text-[10px] font-semibold disabled:opacity-35" style={{ background: 'rgba(239,68,68,0.14)', color: '#be123c' }}>停止</button>
           <button type="button" disabled={busy || !settings.deviceDid} onClick={onNext} className="rounded-xl px-2 py-2 text-[10px] font-semibold disabled:opacity-35" style={{ background: 'rgba(255,255,255,0.54)', color: '#30323a' }}>下一首</button>
           <button type="button" disabled={busy || !settings.deviceDid} onClick={onRefreshStatus} className="rounded-xl px-2 py-2 text-[10px] font-semibold disabled:opacity-35" style={{ background: 'rgba(255,255,255,0.54)', color: '#30323a' }}>状态</button>
+        </div>
+
+        <div
+          className="rounded-xl px-3 py-2 text-[10px]"
+          style={{ background: 'rgba(255,255,255,0.42)', border: '1px solid rgba(0,0,0,0.05)', color: '#5f6470' }}
+        >
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="font-semibold" style={{ color: '#30323a' }}>最近 DJ 调试</span>
+            <span className="font-mono">{debug?.stage || 'idle'}</span>
+          </div>
+          <p className="line-clamp-2">{debug?.message || '还没有推送记录'}</p>
+          {debug?.trackTitle && (
+            <p className="mt-1 truncate">歌曲：{debug.trackTitle}</p>
+          )}
+          {debug?.djSource && (
+            <p className="mt-1 truncate">来源：{debug.djSource} · {debug.spokenDjChars || debug.originalDjChars || 0} 字</p>
+          )}
+          {debug?.djAudioUrl && (
+            <p className="mt-1 truncate">DJ URL：{debug.djAudioUrl}</p>
+          )}
+          {debug?.djAudioPushUrl && debug.djAudioPushUrl !== debug.djAudioUrl && (
+            <p className="mt-1 truncate">推送URL：{debug.djAudioPushUrl}</p>
+          )}
+          {debug?.pushedDjAt && (
+            <p className="mt-1">DJ：{debug.pushedDjAt}{debug.pushedSongAt ? ` · 歌曲：${debug.pushedSongAt}` : ''}</p>
+          )}
         </div>
       </div>
     </section>

@@ -88,6 +88,35 @@ function normalizePlaylist(playlist) {
   }
 }
 
+function normalizeDjRadio(radio) {
+  return {
+    id: radio?.id || radio?.radio?.id,
+    name: radio?.name || radio?.radio?.name || '未命名电台',
+    coverUrl: radio?.picUrl || radio?.coverUrl || radio?.radio?.picUrl || '',
+    description: radio?.desc || radio?.description || radio?.radio?.desc || '',
+    programCount: radio?.programCount || radio?.program?.count || 0,
+    category: radio?.category || radio?.radio?.category || '',
+    djName: radio?.dj?.nickname || radio?.radio?.dj?.nickname || '',
+    raw: radio
+  }
+}
+
+function normalizeDjProgram(program) {
+  const mainSong = program?.mainSong || program?.song || null
+  return {
+    id: program?.id,
+    name: program?.name || mainSong?.name || '未命名节目',
+    radioId: program?.radio?.id || program?.radioId,
+    radioName: program?.radio?.name || '',
+    coverUrl: program?.coverUrl || program?.blurCoverUrl || program?.radio?.picUrl || getCoverUrl(mainSong),
+    description: program?.description || program?.desc || '',
+    duration: program?.duration || mainSong?.duration || mainSong?.dt || 0,
+    listenerCount: program?.listenerCount || program?.subscribedCount || 0,
+    mainSong: mainSong ? normalizeSong(mainSong) : null,
+    raw: program
+  }
+}
+
 export async function requestNetease(path, params = {}) {
   const cookie = getStoredNeteaseCookie()
   const url = buildUrl(path, {
@@ -147,6 +176,23 @@ export async function searchSongs(keywords, options = {}) {
   } catch {
     return normalized
   }
+}
+
+export async function searchPlaylists(keywords, options = {}) {
+  const cleanedKeywords = keywords.trim()
+  if (!cleanedKeywords) return []
+
+  const data = await requestNetease('/search', {
+    keywords: cleanedKeywords,
+    type: 1000,
+    limit: options.limit || 20,
+    offset: options.offset || 0
+  })
+
+  const playlists = data?.result?.playlists || []
+  return Array.isArray(playlists)
+    ? playlists.map(normalizePlaylist).filter(playlist => playlist.id)
+    : []
 }
 
 export async function getSongDetail(ids) {
@@ -251,6 +297,49 @@ export async function getLikedSongs(uid, options = {}) {
 
   if (limitedIds.length === 0) return []
   return getSongDetail(limitedIds)
+}
+
+export async function getPersonalizedDjPrograms(options = {}) {
+  const data = await requestNetease('/personalized/djprogram', {
+    limit: options.limit || 12,
+    timestamp: Date.now(),
+    allowedCodes: [200]
+  })
+
+  const programs = data?.result || data?.programs || []
+  return Array.isArray(programs)
+    ? programs.map(item => normalizeDjProgram(item.program || item)).filter(program => program.id)
+    : []
+}
+
+export async function getDjRecommendations(options = {}) {
+  const data = await requestNetease('/dj/recommend', {
+    limit: options.limit || 12,
+    timestamp: Date.now(),
+    allowedCodes: [200]
+  })
+
+  const radios = data?.data || data?.djRadios || data?.result || []
+  return Array.isArray(radios)
+    ? radios.map(normalizeDjRadio).filter(radio => radio.id)
+    : []
+}
+
+export async function getDjPrograms(rid, options = {}) {
+  if (!rid) return []
+
+  const data = await requestNetease('/dj/program', {
+    rid,
+    limit: options.limit || 30,
+    offset: options.offset || 0,
+    timestamp: Date.now(),
+    allowedCodes: [200]
+  })
+
+  const programs = data?.programs || data?.data?.programs || []
+  return Array.isArray(programs)
+    ? programs.map(normalizeDjProgram).filter(program => program.id)
+    : []
 }
 
 export async function getSongUrl(id, options = {}) {

@@ -1,6 +1,49 @@
 # Agent Progress
 
-更新时间：2026-05-13 21:10（Asia/Shanghai）
+更新时间：2026-05-15 10:30（Asia/Shanghai）
+
+## 2026-05-15 小爱 DJ 串场根因修复与网易云中心重构
+
+### Completed Work
+
+- 已确认 DJ 串场词和 Claudio DJ MP3 都能正确生成：`.codex-run/tts` 有多条新生成的 `dj-*.mp3`，xiaomusic 日志显示这些 `/api/claudio-tts/*.mp3` 已通过 `/playurl` 推送给 Xiaomi Sound，设备代理返回 `code:0`。
+- 已定位“小爱听不到 DJ，等很久后直接播歌”的核心原因：App 内部多处同时触发小爱推送，导致 DJ MP3 推送后又被新的 `/device/stop` 或歌曲 `/playurl` 覆盖。
+- 已新增 `src/services/xiaoPlaybackController.js`，小爱播放现在统一走单一队列：取消旧任务 -> 停止旧播放 -> 生成 Claudio DJ MP3 -> 推送 DJ -> 等待音频时长和缓冲 -> 推送歌曲。
+- 已给小爱播放任务增加操作 ID。旧任务一旦被切歌、暂停、重新推送接管，就不能再继续 stop 新任务，也不能再把旧歌曲 URL 推给小爱。
+- `src/App.jsx` 已改成只通过队列入口推送小爱，不再在 App 内部分散调用 `generateXiaoDjAudio()`、`playXiaoMusicUrl()`、`playXiaoMusicTts()`。
+- 暂停/停止小爱现在会先取消当前队列任务，再调用 xiaomusic 停止接口，避免暂停后旧任务继续推歌。
+- 右上角设置里的小爱区域新增“最近 DJ 调试”，显示阶段、来源、字数、DJ MP3 URL、DJ 推送时间和歌曲推送时间，方便现场判断到底卡在哪一步。
+- 小爱设置新增“触屏兼容”和“强制停止”兼容开关，默认关闭；用户需要时才会让 xiaomusic 开启 `use_music_api` 或 `enable_force_stop`。
+- 已进一步确认当前卡点不是“没生成 DJ”或“没推送 DJ”：xiaomusic 日志里 DJ MP3 的 `/playurl` 返回 `code:0`，随后才推送歌曲；问题更像是音箱直接访问 Claudio 的 `5173` DJ MP3 URL 时没有真正出声。
+- 已新增“代理DJ音频”默认开关：DJ MP3 仍由 Claudio/MiniMax 生成，但推给小爱的 URL 改成 xiaomusic 自己的 `/proxy?urlb64=...`，让 xiaomusic 替音箱拉取 `5173` 音频。
+- 已新增 `src/components/NeteaseCenter.jsx`，网易云功能从聊天流中的小面板升级为独立“网易云中心”。
+- 网易云中心包含：账号状态、我的歌单、歌曲搜索、歌单搜索、收藏歌曲、电台推荐、推荐节目和电台节目列表。
+- `src/services/neteaseApi.js` 已扩展歌单搜索、电台推荐、推荐节目、电台节目列表接口；拿不到可播放地址时会显示版权/会员/权限提示。
+
+### Changed Files
+
+- `src/services/xiaoPlaybackController.js`：新增小爱单一播放队列、任务取消、调试快照、Claudio MP3 主路径、xiaomusic 代理推送 URL 和小爱原生 TTS 兜底。
+- `src/services/xiaoMusicService.js`：新增小爱兼容模式设置字段，并新增 DJ 音频 xiaomusic `/proxy` URL 构造。
+- `src/App.jsx`：接入小爱播放队列、取消旧分散推送、接入网易云中心、把小爱调试快照传入设置面板。
+- `src/components/XiaoMusicPanel.jsx`：设置面板新增 DJ 调试信息、代理DJ音频、触屏兼容和强制停止开关。
+- `src/components/GlassSettingsPanel.jsx`：向小爱设置控件传入调试快照。
+- `src/components/NeteaseCenter.jsx`：新增独立网易云中心界面。
+- `src/services/neteaseApi.js`：新增网易云歌单搜索和电台相关 API 封装。
+- `docs/agent-progress.md`：记录本次根因、改动和验证方式。
+
+### Current Problems
+
+- 真实小爱音箱播放仍需要用户现场听感确认：现在代码层已避免并发覆盖，也已把 DJ MP3 推送改成 xiaomusic 代理 URL，但音箱实际是否完整播完仍取决于 xiaomusic、设备固件和局域网访问。
+- xiaomusic `/playurl` 返回 `code:0` 只代表设备代理接受命令，不等于音箱一定完整播完音频；因此保留了右上角“最近 DJ 调试”，现在还会显示原始 `DJ URL` 和实际 `推送URL`。
+- `npm run lint` 仍有 warning-only，主要是项目现有 ESLint 配置无法识别 JSX 中的组件使用，不是构建阻塞。
+
+### Next Steps
+
+1. 打开 `http://localhost:5173/`，开启小爱播放，播放任意网易云歌曲。
+2. 听小爱是否先播放 Claudio 声线 DJ，再播放歌曲。
+3. 如果仍然没有 DJ，打开右上角设置，查看“最近 DJ 调试”的阶段、DJ URL 和推送URL；推送URL 默认应该是 `http://...:58090/proxy?urlb64=...`。
+4. 再看 xiaomusic 日志：一次正常切歌应该先出现一条 `/proxy?urlb64=...` 的 DJ `/playurl`，等待后再出现一条网易云音乐 `/playurl`，中间不应夹新的 `/device/stop`。
+5. 到“网易云中心”分别验证：歌单、搜索、收藏、电台；如果某项失败，页面应显示可理解的失败原因。
 
 ## Completed Work
 
