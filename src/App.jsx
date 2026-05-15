@@ -287,6 +287,8 @@ export default function App() {
   const [xiaoStatus, setXiaoStatus] = useState({ type: 'idle', message: '' })
   const [xiaoDebug, setXiaoDebug] = useState(null)
   const [xiaoBusy, setXiaoBusy] = useState(false)
+  const [isQueueExpanded, setIsQueueExpanded] = useState(true)
+  const [isDragging, setIsDragging] = useState(false)
 
   const audioRef = useRef(null)
   const voiceAudioRef = useRef(null)
@@ -295,6 +297,8 @@ export default function App() {
   const pendingTrackRef = useRef(null)
   const chatRef = useRef(null)
   const abortRef = useRef(null)
+  const transitionAbortRef = useRef(null)
+  const progressRef = useRef(null)
 
   const isPlaying = phase === 'playing'
   const isThinking = phase === 'thinking'
@@ -393,6 +397,35 @@ export default function App() {
     }
   }
 
+  function handleSeek(clientX) {
+    if (!progressRef.current || !audioRef.current) return
+    const rect = progressRef.current.getBoundingClientRect()
+    const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    const seekTime = percent * trackDuration
+    audioRef.current.currentTime = seekTime
+    setTrackTime(seekTime)
+  }
+
+  function requestTransition(track) {
+    if (!track) return
+    transitionAbortRef.current?.abort()
+    const controller = new AbortController()
+    transitionAbortRef.current = controller
+
+    streamChatDjMessage(
+      `[系统：歌曲已切换到 "${track.title}" - ${track.artist || '未知'}，请用 speak 动作说一句简短的串场词。]`,
+      {
+        signal: controller.signal,
+        onEvent: (payload) => {
+          const { event, data } = payload
+          if (event === 'sentence_ready' && data?.text) {
+            enqueueVoice(data)
+          }
+        }
+      }
+    ).catch(() => {})
+  }
+
   function startMusic(track) {
     if (!track?.audioUrl) {
       setError('这首歌暂时没有可播放地址。')
@@ -415,6 +448,7 @@ export default function App() {
       .then(() => {
         setError('')
         setPhase('playing')
+        requestTransition(track)
       })
       .catch(() => {
         setPhase('paused')
@@ -826,41 +860,51 @@ export default function App() {
               {queue.length > 0 && (
                 <div className="mb-2">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-xs font-medium" style={{ color: '#30323a' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsQueueExpanded(prev => !prev)}
+                      className="flex items-center gap-2 text-xs font-medium"
+                      style={{ color: '#30323a', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
                       <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#7C5CFF' }} />
                       Queue · {queue.length} tracks
-                    </span>
+                      <span className="text-[10px]" style={{ color: '#6c6f78' }}>
+                        {isQueueExpanded ? '▾' : '▸'}
+                      </span>
+                    </button>
                   </div>
-                  <div className="max-h-28 space-y-1 overflow-y-auto rounded-2xl p-1.5" style={{ background: 'rgba(255,255,255,0.24)', border: '1px solid rgba(255,255,255,0.20)' }}>
-                    {queue.slice(0, 8).map((track, index) => {
-                      const active = currentTrack?.id === track.id
-                      return (
-                        <button
-                          key={`${track.id}-${index}`}
-                          type="button"
-                          onClick={() => startMusic(track)}
-                          className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-left transition-all"
-                          style={{
-                            background: active ? 'rgba(255,255,255,0.50)' : 'transparent',
-                          }}
-                        >
-                          <span
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+                  {isQueueExpanded && (
+                    <div className="max-h-28 space-y-1 overflow-y-auto rounded-2xl p-1.5" style={{ background: 'rgba(255,255,255,0.24)', border: '1px solid rgba(255,255,255,0.20)' }}>
+                      {queue.slice(0, 8).map((track, index) => {
+                        const active = currentTrack?.id === track.id
+                        return (
+                          <button
+                            key={`${track.id}-${index}`}
+                            type="button"
+                            onClick={() => startMusic(track)}
+                            className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-left transition-all"
                             style={{
-                              background: active ? 'rgba(124,92,255,0.78)' : 'rgba(255,255,255,0.34)',
-                              color: active ? '#FFFFFF' : '#6c6f78',
+                              background: active ? 'rgba(255,255,255,0.50)' : 'transparent',
                             }}
                           >
-                            {active ? 'Now' : index + 1}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[11px] font-semibold" style={{ color: '#1f2330' }}>{track.title}</span>
-                            <span className="block truncate text-[10px]" style={{ color: '#6c6f78' }}>{track.artist}</span>
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
+                            <span
+                              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+                              style={{
+                                background: active ? 'rgba(124,92,255,0.78)' : 'rgba(255,255,255,0.34)',
+                                color: active ? '#FFFFFF' : '#6c6f78',
+                              }}
+                            >
+                              {active ? 'Now' : index + 1}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[11px] font-semibold" style={{ color: '#1f2330' }}>{track.title}</span>
+                              <span className="block truncate text-[10px]" style={{ color: '#6c6f78' }}>{track.artist}</span>
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -903,7 +947,15 @@ export default function App() {
 
                 <div className="mb-2.5 flex items-center gap-2">
                   <span className="w-8 text-[10px] font-mono" style={{ color: '#5f6470' }}>{formatTime(trackTime)}</span>
-                  <div className="flex h-8 flex-1 items-center gap-0.5 overflow-hidden rounded-full px-2" style={{ background: 'rgba(255,255,255,0.36)' }}>
+                  <div
+                    ref={progressRef}
+                    className="flex h-8 flex-1 cursor-pointer items-center gap-0.5 overflow-hidden rounded-full px-2"
+                    style={{ background: 'rgba(255,255,255,0.36)', userSelect: 'none' }}
+                    onPointerDown={(e) => { setIsDragging(true); handleSeek(e.clientX) }}
+                    onPointerMove={(e) => { if (isDragging) handleSeek(e.clientX) }}
+                    onPointerUp={() => setIsDragging(false)}
+                    onPointerLeave={() => setIsDragging(false)}
+                  >
                     {Array.from({ length: 44 }).map((_, index) => {
                       const isActive = progress >= (index / 43) * 100
                       const height = 5 + Math.abs(Math.sin(index * 0.54)) * 13
