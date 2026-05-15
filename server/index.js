@@ -897,11 +897,13 @@ const server = http.createServer(async (req, res) => {
       return
     }
     if (req.method === 'GET' && url.pathname === '/api/now') {
+      await loadState()
       jsonResponse(res, 200, {
-        currentTrack: stateCache.currentTrack,
+        track: stateCache.currentTrack,
         isPlaying: stateCache.isPlaying,
         volume: stateCache.volume,
-        queueLength: stateCache.queue.length
+        queueLength: stateCache.queue.length,
+        mood: stateCache.mood
       })
       return
     }
