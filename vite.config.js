@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
+import { Readable } from 'node:stream'
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
-const projectCacheDir = path.join(projectRoot, 'node_modules', '.vite-claudio')
 const claudioTtsDir = path.join(projectRoot, '.codex-run', 'tts')
 
 function readRequestBody(req) {
@@ -364,17 +364,72 @@ function minimaxChatProxy(env) {
   }
 }
 
+function chatDjBackendProxy(env) {
+  const backendBaseUrl = (env.CLAUDIO_SERVER_URL || env.VITE_CLAUDIO_SERVER_URL || 'http://127.0.0.1:8080').trim().replace(/[`'"]/g, '').replace(/\/+$/, '')
+  const proxiedPrefixes = ['/api/chat', '/api/state', '/api/now', '/api/player', '/api/tts', '/api/netease', '/api/sync-library']
+
+  const attachMiddleware = (middlewares) => {
+    middlewares.use(async (req, res, next) => {
+      const requestUrl = new URL(req.url || '/', 'http://localhost')
+      if (!proxiedPrefixes.some(prefix => requestUrl.pathname === prefix || requestUrl.pathname.startsWith(`${prefix}/`))) {
+        next()
+        return
+      }
+
+      try {
+        const targetUrl = `${backendBaseUrl}${requestUrl.pathname}${requestUrl.search}`
+        const method = req.method || 'GET'
+        const headers = {
+          'Content-Type': req.headers['content-type'] || 'application/json',
+          Accept: req.headers.accept || '*/*'
+        }
+
+        const response = await fetch(targetUrl, {
+          method,
+          headers,
+          body: method === 'GET' || method === 'HEAD' ? undefined : await readRequestBody(req),
+          duplex: method === 'GET' || method === 'HEAD' ? undefined : 'half'
+        })
+
+        res.statusCode = response.status
+        response.headers.forEach((value, key) => {
+          if (!['content-encoding', 'transfer-encoding'].includes(key.toLowerCase())) {
+            res.setHeader(key, value)
+          }
+        })
+
+        if (response.body) {
+          Readable.fromWeb(response.body).pipe(res)
+        } else {
+          res.end()
+        }
+      } catch (error) {
+        res.statusCode = 502
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify({
+          error: error.message || 'Claudio backend is not available',
+          hint: '请先运行 npm run server，保持 localhost:8080 后端开启。'
+        }))
+      }
+    })
+  }
+
+  return {
+    name: 'claudio-chat-dj-backend-proxy',
+    configureServer(server) {
+      attachMiddleware(server.middlewares)
+    },
+    configurePreviewServer(server) {
+      attachMiddleware(server.middlewares)
+    }
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, projectRoot, '')
 
   return {
     root: projectRoot,
-    cacheDir: projectCacheDir,
-    optimizeDeps: {
-      disabled: true,
-      noDiscovery: true,
-      include: []
-    },
-    plugins: [react(), xiaoMusicProxy(env), minimaxChatProxy(env), minimaxTtsProxy(env), minimaxXiaoDjAudioProxy(env)],
+    plugins: [react(), chatDjBackendProxy(env), xiaoMusicProxy(env), minimaxChatProxy(env), minimaxTtsProxy(env), minimaxXiaoDjAudioProxy(env)],
   }
 })
