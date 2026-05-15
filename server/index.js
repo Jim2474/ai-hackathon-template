@@ -669,7 +669,34 @@ async function syncMusicLibrary(cookie) {
   const lines = ['# 我的音乐库\n']
   lines.push(`> 同步时间：${new Date().toLocaleString('zh-CN')}\n`)
 
-  // Fetch playlists
+  const seenSongIds = new Set()
+  const formatSong = (song) => {
+    const artists = (song.ar || song.artists || []).map(a => a.name).filter(Boolean).join(' / ')
+    const album = song.al?.name || song.album?.name || ''
+    const duration = Math.round((song.dt || song.duration || 0) / 1000)
+    const mins = Math.floor(duration / 60)
+    const secs = String(duration % 60).padStart(2, '0')
+    return `${song.name} | ${artists} | ${album} | ${mins}:${secs}`
+  }
+
+  const fetchSongDetails = async (ids) => {
+    const songs = []
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50)
+      try {
+        const detailData = await requestNetease('/song/detail', { ids: batch.join(','), cookie })
+        for (const song of (detailData?.songs || [])) {
+          if (!seenSongIds.has(song.id)) {
+            seenSongIds.add(song.id)
+            songs.push(formatSong(song))
+          }
+        }
+      } catch {}
+    }
+    return songs
+  }
+
+  // Fetch playlists and their songs
   try {
     const playlistData = await requestNetease('/user/playlist', { uid: '', cookie, limit: 50 })
     const playlists = playlistData?.playlist || []
@@ -682,36 +709,37 @@ async function syncMusicLibrary(cookie) {
         lines.push(`- **${pl.name}**（${trackCount}首，播放${playCountText}）`)
       }
       lines.push('')
+
+      // Fetch songs from each playlist
+      for (const pl of playlists) {
+        try {
+          const detailData = await requestNetease('/playlist/detail', { id: pl.id, cookie })
+          const trackIds = (detailData?.playlist?.trackIds || detailData?.trackIds || []).map(t => t.id || t)
+          if (trackIds.length === 0) continue
+
+          lines.push(`### ${pl.name}（${trackIds.length}首）\n`)
+          const songs = await fetchSongDetails(trackIds)
+          if (songs.length > 0) {
+            lines.push('```')
+            songs.forEach((line, i) => {
+              lines.push(`${i + 1}. ${line}`)
+            })
+            lines.push('```\n')
+          }
+        } catch {}
+      }
     }
   } catch (e) {
     lines.push(`## 歌单获取失败：${e.message}\n`)
   }
 
-  // Fetch liked songs
+  // Fetch liked songs (收藏歌曲)
   try {
     const likedData = await requestNetease('/likelist', { cookie })
     const likedIds = likedData?.ids || []
     lines.push(`## 收藏歌曲（共 ${likedIds.length} 首）\n`)
 
-    // Fetch details in batches of 50
-    const allSongs = []
-    for (let i = 0; i < likedIds.length; i += 50) {
-      const batch = likedIds.slice(i, i + 50)
-      try {
-        const detailData = await requestNetease('/song/detail', { ids: batch.join(','), cookie })
-        const songs = detailData?.songs || []
-        for (const song of songs) {
-          const artists = (song.ar || song.artists || []).map(a => a.name).filter(Boolean).join(' / ')
-          const album = song.al?.name || song.album?.name || ''
-          const duration = Math.round((song.dt || song.duration || 0) / 1000)
-          const mins = Math.floor(duration / 60)
-          const secs = String(duration % 60).padStart(2, '0')
-          allSongs.push(`${song.name} | ${artists} | ${album} | ${mins}:${secs}`)
-        }
-      } catch {
-        // Skip failed batch
-      }
-    }
+    const allSongs = await fetchSongDetails(likedIds)
 
     if (allSongs.length > 0) {
       lines.push('```')
