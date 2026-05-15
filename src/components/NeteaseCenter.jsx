@@ -478,7 +478,7 @@ export default function NeteaseCenter({ isOpen, onClose, onPlayTracks }) {
                   ))}
                 </div>
               ) : (
-                <EmptyState message="点击"电台"页签刷新推荐，或选择一个推荐电台。" />
+                <EmptyState message={'点击"电台"页签刷新推荐，或选择一个推荐电台。'} />
               )}
             </div>
           </div>

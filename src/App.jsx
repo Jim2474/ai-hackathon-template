@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getChatDjState, sendPlayerControl, streamChatDjMessage } from './services/chatDjClient'
 import { getSourceLabel } from './services/audioSourceService'
-import NeteaseLibraryPanel from './components/NeteaseLibraryPanel'
+import NeteaseCenter from './components/NeteaseCenter'
 import NeteaseLoginPanel from './components/NeteaseLoginPanel'
 import GlassPanel from './components/GlassPanel'
 import { GlassSettingsProvider, useGlassSettings } from './components/GlassSettings'
@@ -760,13 +760,6 @@ export default function App() {
               ref={chatRef}
               className="flex-1 space-y-3 overflow-y-auto px-5 pb-4 pt-2 sm:px-6"
             >
-              {isNeteaseLibraryOpen && (
-                <NeteaseLibraryPanel
-                  isOpen={isNeteaseLibraryOpen}
-                  onClose={() => setIsNeteaseLibraryOpen(false)}
-                  onPlayTracks={handleNeteaseLibraryTracks}
-                />
-              )}
 
               {messages.map(message => (
                 <MessageBubble
@@ -964,6 +957,18 @@ export default function App() {
             </footer>
           </GlassPanel>
         </div>
+
+        {isNeteaseLibraryOpen && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4">
+            <div className="h-[min(790px,calc(100vh-24px))] w-[460px] max-w-[calc(100vw-18px)]">
+              <NeteaseCenter
+                isOpen={isNeteaseLibraryOpen}
+                onClose={() => setIsNeteaseLibraryOpen(false)}
+                onPlayTracks={handleNeteaseLibraryTracks}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </GlassSettingsProvider>
   )
