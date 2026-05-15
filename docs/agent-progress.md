@@ -1,6 +1,120 @@
 # Agent Progress
 
-更新时间：2026-05-15 10:30（Asia/Shanghai）
+更新时间：2026-05-15 23:30（Asia/Shanghai）
+
+## 2026-05-15 DJ 增强 + UI 交互改进
+
+### Completed Work
+
+- 已新增 `speak` 动作类型，Claude 可以通过 `{"type":"speak","text":"串场词"}` 请求朗读串场词。
+- 已更新系统提示词，要求 Claude 在找歌或切歌时用 speak 动作说简短串场词。
+- 已在提示词中加入当前时间和时段判断（深夜/早上/下午/傍晚/白天），Claude 会根据时间调整推荐风格。
+- 已创建 `.claudio/taste.md` 用户品味语料模板，内容会拼入 Claude 提示词。
+- 已新增简单指令分流：下一首、上一首、暂停、继续、声音大/小点等指令直接执行，不调 Claude，响应更快。
+- 已新增 `GET /api/now` 端点，返回当前播放状态快照（track、isPlaying、volume、queueLength、mood）。
+- 已新增切歌时自动请求 Claude 生成串场词并 TTS 播放。
+- 已新增播放队列收起/展开按钮。
+- 已新增进度条点击和拖拽跳转功能。
+
+### Changed Files
+
+- `server/index.js`：speak 动作、环境信息、品味语料、指令分流、/api/now 端点。
+- `src/App.jsx`：自动串场词、队列收起按钮、进度条拖拽。
+- `.claudio/taste.md`：新增品味语料模板。
+
+### Commits
+
+- `195c362` feat: add speak action type and enhance DJ system prompt
+- `c04f57f` feat: add environment info and taste corpus to Claude prompt
+- `83a2453` feat: add quick command routing for simple DJ instructions
+- `8f47826` feat: add GET /api/now endpoint for quick status
+- `0ba86dc` feat: auto DJ transitions + queue collapse + progress bar seeking
+
+## 2026-05-15 网易云中心 UI 重构 + Liquid Glass 恢复
+
+### Completed Work
+
+- 已把 App.jsx 从暗色仪表盘 UI 改回液态玻璃手机收音机布局（AlbumWallBackground、GlassPanel、SoundWaves）。
+- 已把 GlassSettingsPanel 补回小爱音箱设置（xiaoSettings state + handler stubs + props）。
+- 已把 NeteaseCenter 重写为全屏覆盖层，5 个 Tab（歌单/搜索/歌单搜索/收藏/电台），GlassPanel 液态玻璃风格。
+- 已在 App.jsx 中把 NeteaseCenter 集成为全屏覆盖层（fixed inset-0 z-40 + backdrop）。
+- 已修复覆盖层缺少背景遮罩的问题（加 backdropFilter + onClick 关闭）。
+
+### Commits
+
+- `c0b8dcd` fix: add backdrop to NeteaseCenter overlay to prevent click-through
+- `ee29191` feat: integrate NeteaseCenter as full-screen overlay in App
+- `bab02f1` feat: rewrite NeteaseCenter as full-screen overlay with 5 tabs
+- `bfe88ca` fix: pass xiao settings props to GlassSettingsPanel
+
+## 2026-05-15 网易云 API 接入到 Chat DJ Core
+
+### Completed Work
+
+- 已把用户本机网易云 API 正式接入新版 Chat DJ Core，不再只停留在旧界面组件里。
+- `server/index.js` 新增 `/api/netease/*` 代理，统一转发到 `NETEASE_API_BASE_URL` / `VITE_NETEASE_API_BASE_URL`，默认 `http://127.0.0.1:3000`。
+- `vite.config.js` 的 Chat DJ 后端代理新增 `/api/netease`，preview 页面也能通过 `localhost:5173/api/netease/*` 调用后端代理。
+- `src/services/neteaseApi.js` 默认改为 `/api/netease`，并修复相对 URL 构造，避免浏览器报 `Failed to construct 'URL': Invalid URL`。
+- `src/App.jsx` 右上角新增“网易云”入口，打开后显示网易云中心。
+- 网易云中心已接回新版主界面：搜索、歌单、收藏、电台等旧功能可以在 Chat DJ UI 中打开；选中歌曲后会直接进入 Claudio 队列并播放。
+- 已给网易云中心补上 `GlassSettingsProvider`，修复打开中心时报 `useGlassSettings must be used within GlassSettingsProvider` 的崩溃。
+
+### Verification
+
+- `http://127.0.0.1:8080/api/netease/search?keywords=周杰伦&limit=3` 返回 200，网易云 code 为 200，能拿到歌曲结果。
+- `http://localhost:5173/api/netease/search?keywords=周杰伦&limit=3` 返回 200，说明 preview 前端代理也通了。
+- 浏览器实测：右上角“网易云”按钮可见；打开网易云中心后能看到“歌单 / 搜索 / 收藏 / 电台”。
+- 浏览器实测：搜索“周杰伦”返回 30 首歌。
+- 浏览器实测：点击“播放前 12 首”后，主播放器切到网易云歌曲“屋顶”，状态为 `ON AIR`，聊天区显示“网易云已接入：搜索：周杰伦 · 12 tracks”。
+- `npm run build` 通过。
+- `npm run lint` 为 0 errors、20 warnings；仍是 JSX 使用识别和历史未使用组件的 warning-only。
+
+### Current Problems
+
+- 未登录网易云时，部分歌曲可能拿不到完整播放 URL，这是网易云版权/会员/账号权限限制，不是 Claudio 队列问题。
+- 当前 `npm run dev` 仍受 Vite/Node 24 依赖预构建问题影响，测试继续使用 `npm run build` + `npm run preview -- --host 0.0.0.0 --port 5173`。
+
+### Next Steps
+
+1. 让用户用自己的网易云账号登录或导入 `MUSIC_U`，验证会员歌单和收藏歌曲。
+2. 把 AI 的 `search_music` 动作进一步扩展成可按用户偏好优先从“我的歌单 / 收藏 / 电台”里挑歌。
+3. 清理旧组件 lint warnings，让最终提交更干净。
+
+## 2026-05-15 Chat DJ Core 续推与可测试闭环
+
+### Completed Work
+
+- 已继续推进 Claudio Chat DJ Core：`server/index.js` 后端、`src/services/chatDjClient.js` SSE 客户端和新版 `src/App.jsx` 聊天电台界面保持为当前主链路。
+- 已确认 `localhost:8080` 后端可用，`/api/health` 返回正常，`/api/state` 能返回 Claudio 状态和 TTS 配置。
+- 已修复 Claude CLI 输出污染：后端现在默认用 `claude -p --bare --no-session-persistence --disable-slash-commands --strict-mcp-config --mcp-config {"mcpServers":{}} --tools ""`，避免继承 Claude Code hooks、插件和工具权限提示。
+- 已修复 Claude stream-json 重复拼接：后端现在只消费 `text_delta`，不再把最终 assistant snapshot 再拼一遍。
+- 已新增 DJ 文本清洗：权限 denied 文案、superpowers 注入块、重复句子都会在进入 UI/TTS 前过滤。
+- 已修复隐藏动作块流式泄漏：`<claudio_actions>` 分片输出时，不会再把半截 `<cl` 发送到前端或 TTS。
+- 已接入现有 MiniMax TTS 配置：新后端现在兼容 `.env.local` 里的 `MINIMAX_TTS_API_KEY` / `MINIMAX_TTS_BASE_URL`，不再只能识别 `TTS_API_KEY`。
+- 已验证真实 TTS：`sentence_ready` 返回 `/api/tts/*.mp3`，`provider:"minimax"`，并且 `/api/tts/...mp3` 返回 `audio/mpeg`。
+- 已让 TTS 按句子顺序生成和发送，避免短句先返回导致 Claudio 朗读顺序错乱。
+- 已清理 `.claudio/state.json` 中被权限提示污染的历史消息，并重置本地运行状态，避免测试历史影响下一次对话。
+- 已启动后端 `npm run server`，并用 `vite preview --host 0.0.0.0 --port 5173` 启动前端；浏览器 DOM 显示 `Connected to Claudio server`。
+
+### Changed Files
+
+- `server/index.js`：Claude bare 调用、stream-json 去重、动作块过滤、MiniMax TTS 兼容、顺序 TTS 队列。
+- `vite.config.js`：移除旧的 `optimizeDeps.disabled` / 自定义 cacheDir 尝试，保持 preview proxy 可用。
+- `.claudio/state.json`：本地运行态已重置为干净欢迎消息。
+- `docs/agent-progress.md`：记录本次续推进度和当前风险。
+
+### Current Problems
+
+- `npm run dev` 在当前 Windows + Node.js v24.14.1 + Vite 6.4.2 环境下仍会触发 Vite 依赖预构建崩溃：`Cannot read properties of undefined (reading 'imports')`。当前可演示路线改用 `npm run build` 后的 `npm run preview -- --host 0.0.0.0 --port 5173`。
+- 如果重新切回 dev server 并禁用预构建，会出现 React dev runtime 白屏：`react/jsx-dev-runtime.js does not provide an export named jsxDEV`。因此当前不要用 dev server 做现场测试。
+- 网易云当前接口没有返回可播放歌曲时会走 Local Demo fallback；这保证 Demo 能播，但网易云真实歌源仍需要单独继续打磨。
+
+### Next Steps
+
+1. 用户测试当前页面：打开 `http://localhost:5173/`，输入一句“今天有点烦，来点轻松的中文歌”。
+2. 成功标准：页面先流式出现 Claudio 回复，然后播放 MiniMax 生成的 Claudio 语音，再进入歌曲播放；设置里应显示 TTS provider 为 MiniMax。
+3. 下一轮优先处理 `npm run dev` 的 Vite/Node 兼容问题，或把项目运行说明改成稳定的 `server + build + preview` 双终端路线。
+4. 再继续扩展网易云中心和真实歌源，减少 Local Demo fallback 的出现频率。
 
 ## 2026-05-15 小爱 DJ 串场根因修复与网易云中心重构
 
