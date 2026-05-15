@@ -173,6 +173,20 @@ function getRecentMessagesForPrompt(messages = []) {
 }
 
 function buildAgentPrompt(userMessage) {
+  let tasteText = ''
+  try {
+    tasteText = readFileSync(path.join(runtimeDir, 'taste.md'), 'utf8').trim()
+  } catch {}
+
+  const now = new Date()
+  const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  const hour = now.getHours()
+  let timeContext = '白天'
+  if (hour >= 22 || hour < 6) timeContext = '深夜'
+  else if (hour >= 18) timeContext = '傍晚'
+  else if (hour >= 12) timeContext = '下午'
+  else if (hour >= 6) timeContext = '早上'
+
   const current = stateCache.currentTrack
   const queuePreview = stateCache.queue.slice(0, 6).map((track, index) => `${index + 1}. ${track.title} - ${track.artist}`).join('\n')
 
@@ -186,11 +200,15 @@ function buildAgentPrompt(userMessage) {
 - 每次找歌或切歌时，用 speak 动作说一句简短的串场词，像深夜电台 DJ 一样自然过渡。串场词要简短（1-2句），不要重复相同的句式。
 
 当前状态：
+- 当前时间：${timeStr}（${timeContext}）
 - 当前心情：${stateCache.mood || 'calm'}
 - 当前歌曲：${current ? `${current.title} - ${current.artist}` : '暂无'}
 - 队列：
 ${queuePreview || '暂无队列'}
 - 记忆摘要：${stateCache.summary || '还没有长期摘要。'}
+
+用户品味：
+${tasteText || '（用户还没填写品味档案。）'}
 
 最近对话：
 ${getRecentMessagesForPrompt(stateCache.messages)}
