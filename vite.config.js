@@ -431,5 +431,8 @@ export default defineConfig(({ mode }) => {
   return {
     root: projectRoot,
     plugins: [react(), chatDjBackendProxy(env), xiaoMusicProxy(env), minimaxChatProxy(env), minimaxTtsProxy(env), minimaxXiaoDjAudioProxy(env)],
+    server: {
+      host: '0.0.0.0',
+    },
   }
 })
