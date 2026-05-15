@@ -163,6 +163,74 @@ export async function ensureXiaoMusicNativeTts(settings) {
   return { changed: false, mode: 'native' }
 }
 
+function isLocalhostName(hostname) {
+  return /^(localhost|127\.0\.0\.1|::1)$/i.test(String(hostname || ''))
+}
+
+function buildClaudioPublicBaseUrl(serverSettings = {}) {
+  if (typeof window === 'undefined') return ''
+
+  const currentUrl = new URL(window.location.href)
+  if (!isLocalhostName(currentUrl.hostname)) {
+    return window.location.origin
+  }
+
+  try {
+    const xiaoHostname = safeText(serverSettings.hostname)
+    if (xiaoHostname) {
+      const xiaoUrl = new URL(xiaoHostname)
+      return `${xiaoUrl.protocol}//${xiaoUrl.hostname}:${currentUrl.port || '5173'}`
+    }
+  } catch {
+    // Fall back to the current origin below.
+  }
+
+  return window.location.origin
+}
+
+export function estimateXiaoDjAudioDurationMs(text, fallbackMs = 4500) {
+  const chars = safeText(text).length
+  if (!chars) return fallbackMs
+  return Math.min(9000, Math.max(2600, chars * 190 + 900))
+}
+
+export async function generateXiaoDjAudio(settings, text, options = {}) {
+  const safeMessage = safeText(text)
+  if (!safeMessage) throw new Error('没有可生成的 DJ 文案')
+
+  const serverSettings = options.serverSettings || await getXiaoMusicServerSettings(settings)
+  const publicBaseUrl = options.publicBaseUrl || buildClaudioPublicBaseUrl(serverSettings)
+  const response = await fetch('/api/minimax/xiao-dj-audio', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: safeMessage,
+      publicBaseUrl,
+      voiceId: options.voiceId,
+      speed: options.speed,
+      volume: options.volume,
+      pitch: options.pitch,
+      emotion: options.emotion
+    })
+  })
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data?.error || `MiniMax DJ audio failed: ${response.status}`)
+  }
+
+  if (!data.url) {
+    throw new Error('MiniMax DJ audio response has no URL')
+  }
+
+  return {
+    ...data,
+    durationMs: Number(data.durationMs) > 0
+      ? Number(data.durationMs)
+      : estimateXiaoDjAudioDurationMs(safeMessage)
+  }
+}
+
 export async function getXiaoMusicStatus(settings, did) {
   const safeDid = safeText(did)
   if (!safeDid) throw new Error('未选择小爱设备')

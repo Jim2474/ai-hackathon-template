@@ -21,6 +21,8 @@ import {
   getXiaoMusicStatus,
   getXiaoPlayableUrl,
   ensureXiaoMusicNativeTts,
+  estimateXiaoDjAudioDurationMs,
+  generateXiaoDjAudio,
   loadXiaoMusicSettings,
   nextXiaoMusic,
   playXiaoMusicTts,
@@ -448,6 +450,28 @@ export default function App() {
     return `${compact.slice(0, 18).replace(/[，,、：:；;。！？!?]+$/g, '')}。`
   }
 
+  const buildXiaoDjAudioText = (text, track = null) => {
+    const cleaned = String(text || '').replace(/\s+/g, ' ').trim()
+    if (!cleaned) return buildXiaoDjTtsText(text, track)
+    if (cleaned.length <= 48) return cleaned
+
+    const sentences = cleaned
+      .split(/(?<=[。！？!?；;])/)
+      .map(sentence => sentence.trim())
+      .filter(Boolean)
+    const spokenSentence = sentences.find(sentence =>
+      sentence.length >= 16 &&
+      sentence.length <= 48 &&
+      !/首先听到|接下来听到|来自|专辑|名字本身|歌名/.test(sentence)
+    ) || sentences.find(sentence => sentence.length >= 12 && sentence.length <= 56)
+
+    const title = String(track?.title || '').replace(/\s*[（(].*?[）)]/g, '').trim()
+    const titleLine = title ? `先听《${title.slice(0, 12)}》，让这段声音把状态接住。` : ''
+    const compact = spokenSentence || titleLine || cleaned
+    if (compact.length <= 56) return compact
+    return `${compact.slice(0, 52).replace(/[，,、：:；;。！？!?]+$/g, '')}。`
+  }
+
   const handleDetectXiaoDevices = async () => {
     await withXiaoBusy(async () => {
       const devices = await getXiaoMusicDevices(xiaoSettingsRef.current)
@@ -498,30 +522,54 @@ export default function App() {
 
       if (settings.speakDjBeforeTrack && djText) {
         try {
-          const xiaoDjText = buildXiaoDjTtsText(djText, track)
           await stopXiaoMusic(settings, settings.deviceDid).catch(() => {})
           await new Promise(resolve => setTimeout(resolve, 300))
-          setXiaoMessage('正在让小爱播放 DJ 文案...', 'busy')
-          const ttsMode = await ensureXiaoMusicNativeTts(settings)
+          const xiaoDjAudioText = buildXiaoDjAudioText(djText, track)
+          setXiaoMessage('正在生成 Claudio DJ 声音...', 'busy')
           console.info('[Claudio XiaoMusic] pushing DJ TTS ' + JSON.stringify({
             track: track.title,
             source: djStory.source,
-            mode: ttsMode.mode,
-            ttsModeChanged: ttsMode.changed,
+            mode: 'minimax-audio-url',
             originalChars: djText.length,
-            chars: xiaoDjText.length,
-            preview: xiaoDjText.slice(0, 80)
+            chars: xiaoDjAudioText.length,
+            preview: xiaoDjAudioText.slice(0, 80)
           }))
-          await playXiaoMusicTts(settings, settings.deviceDid, xiaoDjText)
+          const djAudio = await generateXiaoDjAudio(settings, xiaoDjAudioText)
+          console.info('[Claudio XiaoMusic] pushing DJ audio URL ' + JSON.stringify({
+            track: track.title,
+            url: djAudio.url,
+            bytes: djAudio.bytes,
+            durationMs: djAudio.durationMs,
+            voiceId: djAudio.voiceId
+          }))
+          await playXiaoMusicUrl(settings, settings.deviceDid, djAudio.url)
           const ttsLeadMs = Math.max(0, Math.min(1500, settings.ttsLeadMs || 0))
           const sourceLabel = String(djStory.source || '').includes('minimax') ? 'AI' : '本地'
-          setXiaoMessage(ttsLeadMs > 0 ? `${sourceLabel} DJ 文案播放完成，${(ttsLeadMs / 1000).toFixed(1)} 秒后推歌...` : `${sourceLabel} DJ 文案播放完成，正在推歌...`, 'busy')
-          if (ttsLeadMs > 0) {
-            await new Promise(resolve => setTimeout(resolve, ttsLeadMs))
-          }
+          const djWaitMs = Math.max(estimateXiaoDjAudioDurationMs(xiaoDjAudioText), Number(djAudio.durationMs || 0)) + ttsLeadMs
+          setXiaoMessage(`${sourceLabel} Claudio DJ 声音已发送，${(djWaitMs / 1000).toFixed(1)} 秒后推歌...`, 'busy', djAudio)
+          await new Promise(resolve => setTimeout(resolve, djWaitMs))
         } catch (error) {
-          console.warn('[Claudio XiaoMusic] DJ TTS failed', error)
-          setXiaoMessage(error.message || 'DJ 文案播放失败，继续推送音乐', 'error')
+          console.warn('[Claudio XiaoMusic] DJ audio failed, falling back to native TTS', error)
+          try {
+            const xiaoDjText = buildXiaoDjTtsText(djText, track)
+            const ttsMode = await ensureXiaoMusicNativeTts(settings)
+            setXiaoMessage('Claudio 声音生成失败，先用小爱朗读兜底...', 'busy')
+            console.info('[Claudio XiaoMusic] pushing fallback DJ TTS ' + JSON.stringify({
+              track: track.title,
+              mode: ttsMode.mode,
+              ttsModeChanged: ttsMode.changed,
+              chars: xiaoDjText.length,
+              preview: xiaoDjText.slice(0, 80)
+            }))
+            await playXiaoMusicTts(settings, settings.deviceDid, xiaoDjText)
+            const ttsLeadMs = Math.max(0, Math.min(1500, settings.ttsLeadMs || 0))
+            if (ttsLeadMs > 0) {
+              await new Promise(resolve => setTimeout(resolve, ttsLeadMs))
+            }
+          } catch (fallbackError) {
+            console.warn('[Claudio XiaoMusic] fallback DJ TTS failed', fallbackError)
+            setXiaoMessage(fallbackError.message || error.message || 'DJ 文案播放失败，继续推送音乐', 'error')
+          }
         }
       }
 
