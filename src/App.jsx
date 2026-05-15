@@ -415,7 +415,7 @@ export default function App() {
     transitionAbortRef.current = controller
 
     streamChatDjMessage(
-      `[系统：歌曲已切换到 "${track.title}" - ${track.artist || '未知'}，请用 speak 动作说一段自然的串场词。像深夜电台 DJ 一样，简短介绍这首歌，回应用户当前的情绪状态，2-4句话，不要重复之前的句式。]`,
+      `[系统：歌曲已切换到 "${track.title}" - ${track.artist || '未知'}。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]`,
       {
         signal: controller.signal,
         onEvent: (payload) => {
@@ -441,7 +441,7 @@ export default function App() {
     preloadedTransitionRef.current = { track: nextTrack, controller }
 
     streamChatDjMessage(
-      `[系统：下一首歌是 "${nextTrack.title}" - ${nextTrack.artist || '未知'}，请提前准备好一段串场词。像深夜电台 DJ 一样，简短介绍这首歌，2-4句话。用 speak 动作输出。]`,
+      `[系统：下一首歌是 "${nextTrack.title}" - ${nextTrack.artist || '未知'}。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]`,
       {
         signal: controller.signal,
         onEvent: (payload) => {
@@ -525,7 +525,7 @@ export default function App() {
     }
     const utterance = new SpeechSynthesisUtterance(item.text)
     utterance.lang = 'zh-CN'
-    utterance.rate = 1.04
+    utterance.rate = 1.10
     utterance.pitch = 1.02
     utterance.onend = finishVoiceItem
     utterance.onerror = finishVoiceItem

@@ -12,7 +12,7 @@ export const MINIMAX_DJ_VOICE_PRESETS = {
   },
   lateNightFemale: {
     voiceId: 'Chinese (Mandarin)_Wise_Women',
-    speed: 1.04,
+    speed: 1.10,
     pitch: -1,
     label: '阅历姐姐，深夜电台感'
   },
