@@ -4,6 +4,7 @@ import {
   getDjRecommendations,
   getLikedSongs,
   getLoginStatus,
+  getStoredNeteaseCookie,
   getPersonalizedDjPrograms,
   getPlaylistDetail,
   getSongDetail,
@@ -89,6 +90,7 @@ export default function NeteaseCenter({ isOpen, onClose, onPlayTracks }) {
   const [playlistKeyword, setPlaylistKeyword] = useState('')
   const [status, setStatus] = useState('idle')
   const [message, setMessage] = useState('打开网易云中心，选歌单、搜歌或听电台。')
+  const [syncing, setSyncing] = useState(false)
 
   const userId = profile?.userId
   const favoritePlaylist = useMemo(
@@ -128,6 +130,33 @@ export default function NeteaseCenter({ isOpen, onClose, onPlayTracks }) {
     loadAccount()
     return () => { cancelled = true }
   }, [isOpen])
+
+  const handleSyncLibrary = async () => {
+    const cookie = getStoredNeteaseCookie()
+    if (!cookie) {
+      setMessage('请先登录网易云再同步音乐库。')
+      return
+    }
+    setSyncing(true)
+    setMessage('正在同步音乐库，这可能需要几分钟...')
+    try {
+      const res = await fetch('/api/sync-library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cookie })
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setMessage(`音乐库同步完成！已记录 ${data.songs || 0} 首收藏歌曲。Claudio 现在更了解你了。`)
+      } else {
+        setMessage(`同步失败：${data.error || '未知错误'}`)
+      }
+    } catch (error) {
+      setMessage(`同步失败：${error.message}`)
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   if (!isOpen) return null
 
@@ -302,9 +331,22 @@ export default function NeteaseCenter({ isOpen, onClose, onPlayTracks }) {
           <p className="text-base font-semibold" style={{ color: '#171820' }}>网易云中心</p>
           <p className="mt-1 text-[11px] leading-relaxed" style={{ color: status === 'error' ? '#be123c' : '#6c6f78' }}>{message}</p>
         </div>
-        <button type="button" onClick={onClose} className="rounded-full px-3 py-1.5 text-[11px] font-semibold" style={{ background: 'rgba(255,255,255,0.54)', color: '#4a318e' }}>
-          返回电台
-        </button>
+        <div className="flex items-center gap-2">
+          {profile && (
+            <button
+              type="button"
+              onClick={handleSyncLibrary}
+              disabled={syncing}
+              className="rounded-full px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
+              style={{ background: '#4a318e', color: '#fff' }}
+            >
+              {syncing ? '同步中...' : '同步音乐库'}
+            </button>
+          )}
+          <button type="button" onClick={onClose} className="rounded-full px-3 py-1.5 text-[11px] font-semibold" style={{ background: 'rgba(255,255,255,0.54)', color: '#4a318e' }}>
+            返回电台
+          </button>
+        </div>
       </div>
 
       {/* Login prompt */}

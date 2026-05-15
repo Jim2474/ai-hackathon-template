@@ -10,6 +10,7 @@ const rootDir = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const runtimeDir = path.join(rootDir, '.claudio')
 const ttsDir = path.join(runtimeDir, 'tts')
 const statePath = path.join(runtimeDir, 'state.json')
+const libraryPath = path.join(runtimeDir, 'music-library.md')
 
 loadDotEnv(path.join(rootDir, '.env'))
 loadDotEnv(path.join(rootDir, '.env.local'))
@@ -178,6 +179,11 @@ function buildAgentPrompt(userMessage) {
     tasteText = readFileSync(path.join(runtimeDir, 'taste.md'), 'utf8').trim()
   } catch {}
 
+  let libraryText = ''
+  try {
+    libraryText = readFileSync(libraryPath, 'utf8').trim()
+  } catch {}
+
   const now = new Date()
   const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
   const hour = now.getHours()
@@ -218,6 +224,8 @@ ${queuePreview || '暂无队列'}
 用户品味：
 ${tasteText || '（用户还没填写品味档案。）'}
 
+${libraryText ? `用户的音乐库（以下是用户收藏的歌曲和歌单，推荐时优先从这里挑选）：\n\`\`\`\n${libraryText.slice(0, 8000)}\n\`\`\`` : '（用户还没同步音乐库。）'}
+
 最近对话：
 ${getRecentMessagesForPrompt(stateCache.messages)}
 
@@ -233,6 +241,7 @@ ${getRecentMessagesForPrompt(stateCache.messages)}
 - explain_current: {"type":"explain_current"}
 - adjust_mood: {"type":"adjust_mood","mood":"calm"}
 - speak: {"type":"speak","text":"你想说的串场词或过渡语"}
+- load_favorites: {"type":"load_favorites","count":5}
 
 如果只是普通聊天，可以不写动作块。
 动作块不要解释给用户看。
@@ -656,6 +665,106 @@ async function searchMusic(query, count = 5, cookie = '') {
   return tracks
 }
 
+async function syncMusicLibrary(cookie) {
+  const lines = ['# 我的音乐库\n']
+  lines.push(`> 同步时间：${new Date().toLocaleString('zh-CN')}\n`)
+
+  // Fetch playlists
+  try {
+    const playlistData = await requestNetease('/user/playlist', { uid: '', cookie, limit: 50 })
+    const playlists = playlistData?.playlist || []
+    if (playlists.length > 0) {
+      lines.push(`## 我的歌单（${playlists.length} 个）\n`)
+      for (const pl of playlists) {
+        const trackCount = pl.trackCount || 0
+        const playCount = pl.playCount || 0
+        const playCountText = playCount >= 10000 ? `${(playCount / 10000).toFixed(1)}万` : String(playCount)
+        lines.push(`- **${pl.name}**（${trackCount}首，播放${playCountText}）`)
+      }
+      lines.push('')
+    }
+  } catch (e) {
+    lines.push(`## 歌单获取失败：${e.message}\n`)
+  }
+
+  // Fetch liked songs
+  try {
+    const likedData = await requestNetease('/likelist', { cookie })
+    const likedIds = likedData?.ids || []
+    lines.push(`## 收藏歌曲（共 ${likedIds.length} 首）\n`)
+
+    // Fetch details in batches of 50
+    const allSongs = []
+    for (let i = 0; i < likedIds.length; i += 50) {
+      const batch = likedIds.slice(i, i + 50)
+      try {
+        const detailData = await requestNetease('/song/detail', { ids: batch.join(','), cookie })
+        const songs = detailData?.songs || []
+        for (const song of songs) {
+          const artists = (song.ar || song.artists || []).map(a => a.name).filter(Boolean).join(' / ')
+          const album = song.al?.name || song.album?.name || ''
+          const duration = Math.round((song.dt || song.duration || 0) / 1000)
+          const mins = Math.floor(duration / 60)
+          const secs = String(duration % 60).padStart(2, '0')
+          allSongs.push(`${song.name} | ${artists} | ${album} | ${mins}:${secs}`)
+        }
+      } catch {
+        // Skip failed batch
+      }
+    }
+
+    if (allSongs.length > 0) {
+      lines.push('```')
+      allSongs.forEach((line, i) => {
+        lines.push(`${i + 1}. ${line}`)
+      })
+      lines.push('```')
+    }
+    lines.push('')
+  } catch (e) {
+    lines.push(`## 收藏歌曲获取失败：${e.message}\n`)
+  }
+
+  const content = lines.join('\n')
+  await fs.writeFile(libraryPath, content, 'utf8')
+  return { songs: content.includes('\n1. ') ? content.split('\n').filter(l => /^\d+\./.test(l.trim())).length : 0 }
+}
+
+async function loadUserFavorites(cookie, count = 5) {
+  const likedData = await requestNetease('/likelist', { cookie })
+  const likedIds = (likedData?.ids || []).slice(0, count * 2)
+  if (likedIds.length === 0) throw Error('没有收藏歌曲')
+
+  const detailData = await requestNetease('/song/detail', { ids: likedIds.join(','), cookie })
+  const songs = detailData?.songs || []
+  const tracks = []
+
+  for (const song of songs) {
+    if (tracks.length >= count) break
+    try {
+      const urlData = await requestNetease('/song/url', { id: song.id, br: 320000, cookie })
+      const item = Array.isArray(urlData?.data) ? urlData.data[0] : null
+      if (!item?.url) continue
+      tracks.push({
+        id: `netease-${song.id}`,
+        neteaseId: song.id,
+        title: song.name || '未知歌曲',
+        artist: artistText(song),
+        album: song?.al?.name || song?.album?.name || '',
+        duration: Math.round((song.dt || song.duration || 0) / 1000),
+        sourceType: 'netease',
+        source: 'NetEase',
+        audioUrl: item.url,
+        coverUrl: coverUrl(song),
+        raw: song
+      })
+    } catch {}
+  }
+
+  if (tracks.length === 0) throw new Error('收藏歌曲暂时拿不到播放地址')
+  return tracks
+}
+
 async function fallbackLocalTracks(count = 5) {
   const module = await import('../src/data/localAudioLibrary.js')
   return module.localAudioLibrary.slice(0, count).map(track => ({
@@ -703,6 +812,28 @@ async function executeActions(actions, context, res) {
       sseSend(res, 'assistant_delta', { text: action.text })
       const speech = await createSpeech(action.text)
       sseSend(res, 'sentence_ready', speech)
+      continue
+    }
+    if (type === 'load_favorites') {
+      const cookie = context.neteaseCookie || stateCache.neteaseCookie || ''
+      if (!cookie) {
+        sseSend(res, 'assistant_delta', { text: '（需要先登录网易云才能播放收藏歌曲。）' })
+        continue
+      }
+      const count = Math.max(1, Math.min(12, Number(action.count || 5)))
+      sseSend(res, 'tool_start', { tool: 'load_favorites', query: `收藏歌曲 前${count}首` })
+      try {
+        const tracks = await loadUserFavorites(cookie, count)
+        stateCache.queue = tracks
+        stateCache.currentTrack = tracks[0] || null
+        stateCache.isPlaying = Boolean(stateCache.currentTrack)
+        sseSend(res, 'queue_update', { queue: stateCache.queue })
+        if (stateCache.currentTrack) {
+          sseSend(res, 'now_playing', { track: stateCache.currentTrack, queue: stateCache.queue })
+        }
+      } catch (error) {
+        sseSend(res, 'tool_start', { tool: 'load_favorites_error', message: error.message })
+      }
       continue
     }
     if (type === 'search_music') {
@@ -913,6 +1044,22 @@ const server = http.createServer(async (req, res) => {
         queueLength: stateCache.queue.length,
         mood: stateCache.mood
       })
+      return
+    }
+    if (req.method === 'POST' && url.pathname === '/api/sync-library') {
+      const body = await readJsonBody(req)
+      const cookie = String(body.cookie || '').trim()
+      if (!cookie) {
+        jsonResponse(res, 400, { error: 'cookie is required' })
+        return
+      }
+      try {
+        stateCache.neteaseCookie = cookie
+        const result = await syncMusicLibrary(cookie)
+        jsonResponse(res, 200, { ok: true, ...result })
+      } catch (error) {
+        jsonResponse(res, 500, { error: error.message })
+      }
       return
     }
     if (req.method === 'POST' && url.pathname === '/api/chat') {
