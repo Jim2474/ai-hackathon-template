@@ -720,6 +720,60 @@ async function executeActions(actions, context, res) {
   }
 }
 
+function handleQuickCommand(message, res) {
+  const text = message.trim()
+
+  if (/^(下一首|换一首|切歌|下一曲)$/.test(text)) {
+    if (stateCache.queue.length > 1) {
+      const currentIndex = stateCache.queue.findIndex(t => t.id === stateCache.currentTrack?.id)
+      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % stateCache.queue.length : 0
+      stateCache.currentTrack = stateCache.queue[nextIndex]
+      stateCache.isPlaying = true
+      sseSend(res, 'now_playing', { track: stateCache.currentTrack, queue: stateCache.queue })
+    }
+    return '好，切到下一首。'
+  }
+
+  if (/^(上一首|上一曲)$/.test(text)) {
+    if (stateCache.queue.length > 1) {
+      const currentIndex = stateCache.queue.findIndex(t => t.id === stateCache.currentTrack?.id)
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : stateCache.queue.length - 1
+      stateCache.currentTrack = stateCache.queue[prevIndex]
+      stateCache.isPlaying = true
+      sseSend(res, 'now_playing', { track: stateCache.currentTrack, queue: stateCache.queue })
+    }
+    return '好，回到上一首。'
+  }
+
+  if (/^(暂停|停一下|暂停播放)$/.test(text)) {
+    stateCache.isPlaying = false
+    sseSend(res, 'player_command', { action: 'pause' })
+    return '好，暂停了。'
+  }
+
+  if (/^(继续|继续播放|接着放)$/.test(text)) {
+    stateCache.isPlaying = true
+    sseSend(res, 'player_command', { action: 'play' })
+    return '好，继续播放。'
+  }
+
+  if (/^(声音小点|小声点|音量小|轻一点)$/.test(text)) {
+    stateCache.volume = Math.max(0, stateCache.volume - 0.15)
+    return '好，放轻一点了。'
+  }
+
+  if (/^(声音大点|大声点|音量大|响一点)$/.test(text)) {
+    stateCache.volume = Math.min(1, stateCache.volume + 0.15)
+    return '好，推高一点了。'
+  }
+
+  if (/^(别说话了|只放音乐|不要说话|安静)$/.test(text)) {
+    return '好，我先不说话，只放音乐。'
+  }
+
+  return null
+}
+
 async function handleChat(req, res) {
   const body = await readJsonBody(req)
   const userMessage = String(body.message || '').trim()
@@ -730,6 +784,20 @@ async function handleChat(req, res) {
   }
 
   await loadState()
+
+  const quickReply = handleQuickCommand(userMessage, res)
+  if (quickReply) {
+    sseStart(res)
+    sseSend(res, 'assistant_delta', { text: quickReply })
+    sseSend(res, 'sentence_ready', { text: quickReply, audioUrl: '', fallback: true })
+    stateCache.messages.push({ id: randomUUID(), role: 'user', text: userMessage, at: new Date().toISOString() })
+    stateCache.messages.push({ id: randomUUID(), role: 'assistant', text: quickReply, at: new Date().toISOString() })
+    await saveState()
+    sseSend(res, 'done', { state: publicState(), fallback: false })
+    res.end()
+    return
+  }
+
   stateCache.messages.push({ id: randomUUID(), role: 'user', text: userMessage, at: new Date().toISOString() })
   stateCache.messages = stateCache.messages.slice(-80)
   await saveState()
