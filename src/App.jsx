@@ -959,8 +959,15 @@ export default function App() {
         </div>
 
         {isNeteaseLibraryOpen && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4">
-            <div className="h-[min(790px,calc(100vh-24px))] w-[460px] max-w-[calc(100vw-18px)]">
+          <div
+            className="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4"
+            style={{ background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setIsNeteaseLibraryOpen(false)}
+          >
+            <div
+              className="h-[min(790px,calc(100vh-24px))] w-[460px] max-w-[calc(100vw-18px)]"
+              onClick={e => e.stopPropagation()}
+            >
               <NeteaseCenter
                 isOpen={isNeteaseLibraryOpen}
                 onClose={() => setIsNeteaseLibraryOpen(false)}
