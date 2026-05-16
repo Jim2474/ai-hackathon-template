@@ -299,6 +299,7 @@ export default function App() {
   const abortRef = useRef(null)
   const transitionAbortRef = useRef(null)
   const progressRef = useRef(null)
+  const skipNextTransitionRef = useRef(false)
 
   const isPlaying = phase === 'playing'
   const isThinking = phase === 'thinking'
@@ -460,6 +461,9 @@ export default function App() {
       return
     }
 
+    transitionAbortRef.current?.abort()
+    preloadedTransitionRef.current?.abort()
+
     if (audioRef.current) {
       audioRef.current.pause()
     }
@@ -477,8 +481,13 @@ export default function App() {
         setError('')
         setPhase('playing')
 
+        const skipTransition = skipNextTransitionRef.current
+        skipNextTransitionRef.current = false
+
         const preloaded = preloadedTransitionRef.current
-        if (preloaded?.ready && preloaded.track?.id === track.id) {
+        if (skipTransition) {
+          preloadedTransitionRef.current = null
+        } else if (preloaded?.ready && preloaded.track?.id === track.id) {
           setMessages(prev => [...prev, makeMessage('assistant', preloaded.ready.text)])
           enqueueVoice(preloaded.ready)
           preloadedTransitionRef.current = null
@@ -632,6 +641,7 @@ export default function App() {
       return
     }
     if (eventName === 'sentence_ready') {
+      skipNextTransitionRef.current = true
       enqueueVoice(data)
       return
     }
@@ -673,12 +683,18 @@ export default function App() {
       return
     }
 
+    voiceQueueRef.current = []
+    isVoicePlayingRef.current = false
+    transitionAbortRef.current?.abort()
+    preloadedTransitionRef.current = null
+    pendingTrackRef.current = null
+
     setQueue(tracks)
     setMessages(prev => [
       ...prev,
       makeMessage('system', `网易云已接入：${label || '网易云歌曲'} · ${tracks.length} tracks`)
     ])
-    handleNowPlaying(tracks[0], tracks)
+    startMusic(tracks[0])
   }
 
   function handleXiaoSettingsChange(partial) {
