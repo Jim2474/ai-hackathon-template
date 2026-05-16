@@ -599,6 +599,40 @@ async function requestNetease(pathname, params = {}) {
   return data
 }
 
+async function proxyXiaoMusicRequest(req, res, url) {
+  const basePath = url.pathname.replace(/^\/api\/xiaomusic/, '') || '/'
+  const baseUrl = req.headers['x-xiaomusic-base-url'] || 'http://127.0.0.1:58090'
+  const targetUrl = new URL(`${basePath}${url.search}`, baseUrl)
+  url.searchParams.forEach((value, key) => {
+    targetUrl.searchParams.append(key, value)
+  })
+
+  const method = req.method || 'GET'
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': req.headers['content-type'] || 'application/json'
+  }
+  const username = req.headers['x-xiaomusic-username'] || ''
+  const password = req.headers['x-xiaomusic-password'] || ''
+  if (username || password) {
+    headers['Authorization'] = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
+  }
+
+  try {
+    const response = await fetch(targetUrl, {
+      method,
+      headers,
+      body: method === 'GET' || method === 'HEAD' ? undefined : await readBody(req)
+    })
+    const contentType = response.headers.get('content-type') || 'application/json'
+    res.writeHead(response.status, { 'Content-Type': contentType })
+    const body = await response.text()
+    res.end(body)
+  } catch (error) {
+    jsonResponse(res, 502, { error: `XiaoMusic proxy error: ${error.message}` })
+  }
+}
+
 async function proxyNeteaseRequest(req, res, url) {
   const strippedPath = url.pathname.replace(/^\/api\/netease/, '') || '/'
   const targetUrl = new URL(`${NETEASE_BASE_URL}${strippedPath}`)
@@ -1172,6 +1206,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname.startsWith('/api/tts/')) {
       await serveTts(req, res, url.pathname)
+      return
+    }
+    if (url.pathname.startsWith('/api/xiaomusic/')) {
+      await proxyXiaoMusicRequest(req, res, url)
       return
     }
     if (url.pathname === '/api/netease' || url.pathname.startsWith('/api/netease/')) {
