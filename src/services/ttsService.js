@@ -50,6 +50,63 @@ export const MINIMAX_DJ_VOICE_PRESETS = {
 
 const DEFAULT_DJ_VOICE = MINIMAX_DJ_VOICE_PRESETS.lateNightFemale;
 
+// --- 运行时 TTS 设置 ---
+const TTS_SETTINGS_KEY = 'claudio_tts_settings_v1'
+
+export const ALL_TTS_VOICES = {
+  zh: [
+    { id: 'Chinese (Mandarin)_Wise_Women',    label: '阅历姐姐' },
+    { id: 'Chinese (Mandarin)_Warm_Girl',      label: '温暖女声' },
+    { id: 'Chinese (Mandarin)_Sweet_Lady',     label: '甜美女声' },
+    { id: 'Chinese (Mandarin)_Radio_Host',     label: '电台男主播' },
+    { id: 'Chinese (Mandarin)_Gentleman',      label: '温润男声' },
+    { id: 'Chinese (Mandarin)_Male_Announcer', label: '播报男声' },
+    { id: 'Chinese (Mandarin)_Lyrical_Voice',  label: '抒情男声' },
+  ],
+  en: [
+    { id: 'Calm_Woman',       label: 'Calm Woman' },
+    { id: 'Narrator',         label: 'Narrator' },
+    { id: 'Friendly_Person',  label: 'Friendly' },
+    { id: 'Deep_Voice_Man',   label: 'Deep Voice' },
+    { id: 'Patient_Man',      label: 'Patient' },
+  ],
+}
+
+const DEFAULT_TTS_SETTINGS = {
+  voiceId: DEFAULT_DJ_VOICE.voiceId,
+  language: 'auto',
+  speed: DEFAULT_DJ_VOICE.speed,
+  pitch: DEFAULT_DJ_VOICE.pitch,
+}
+
+let runtimeTtsSettings = { ...DEFAULT_TTS_SETTINGS }
+
+export function loadTtsSettings() {
+  try {
+    const raw = localStorage.getItem(TTS_SETTINGS_KEY)
+    if (raw) runtimeTtsSettings = { ...DEFAULT_TTS_SETTINGS, ...JSON.parse(raw) }
+  } catch {}
+  return { ...runtimeTtsSettings }
+}
+
+export function saveTtsSettings(partial) {
+  runtimeTtsSettings = { ...runtimeTtsSettings, ...partial }
+  try { localStorage.setItem(TTS_SETTINGS_KEY, JSON.stringify(runtimeTtsSettings)) } catch {}
+  return { ...runtimeTtsSettings }
+}
+
+export function getTtsSettings() {
+  return { ...runtimeTtsSettings }
+}
+
+export function testTtsVoice(sampleText) {
+  const settings = getTtsSettings()
+  const text = sampleText || (settings.language === 'en'
+    ? 'This is a test of the voice. How does it sound?'
+    : '这是一段测试语音，你觉得好听吗？')
+  return speakDJLine(text)
+}
+
 function stopCurrentTtsAudio() {
   if (currentTtsAbortController) {
     currentTtsAbortController.abort();
@@ -116,6 +173,7 @@ const speakWithBrowser = async (text, options = {}) => {
     return { provider: 'fallback', success: false };
   }
 
+  const settings = getTtsSettings()
   window.speechSynthesis.cancel();
   const selectedVoice = await pickChinesePresenterVoice();
 
@@ -125,8 +183,8 @@ const speakWithBrowser = async (text, options = {}) => {
       utterance.voice = selectedVoice;
     }
 
-    utterance.lang = 'zh-CN';
-    utterance.rate = options.rate || toNumber(import.meta.env.VITE_BROWSER_TTS_RATE, 1.04);
+    utterance.lang = settings.language === 'en' ? 'en-US' : 'zh-CN';
+    utterance.rate = options.rate || settings.speed || toNumber(import.meta.env.VITE_BROWSER_TTS_RATE, 1.04);
     utterance.pitch = options.pitch || toNumber(import.meta.env.VITE_BROWSER_TTS_PITCH, 1.02);
     utterance.volume = toNumber(import.meta.env.VITE_BROWSER_TTS_VOLUME, 1);
     
@@ -173,13 +231,14 @@ const speakWithFishAudio = async (text, options = {}) => {
 
 // MiniMax TTS
 const speakWithMiniMax = async (text, options = {}) => {
+  const settings = getTtsSettings()
   const apiKey = import.meta.env.VITE_MINIMAX_TTS_API_KEY || import.meta.env.VITE_MINIMAX_API_KEY;
   const baseUrl = (import.meta.env.VITE_MINIMAX_TTS_BASE_URL || 'https://api.minimaxi.com/v1').trim().replace(/[`'"]/g, '');
   const model = import.meta.env.VITE_MINIMAX_TTS_MODEL || 'speech-2.8-turbo';
-  const voiceId = import.meta.env.VITE_MINIMAX_TTS_VOICE_ID || DEFAULT_DJ_VOICE.voiceId;
-  const speed = toNumber(options.rate || import.meta.env.VITE_MINIMAX_TTS_SPEED, DEFAULT_DJ_VOICE.speed);
+  const voiceId = options.voiceId || settings.voiceId || import.meta.env.VITE_MINIMAX_TTS_VOICE_ID || DEFAULT_DJ_VOICE.voiceId;
+  const speed = toNumber(options.rate || settings.speed || import.meta.env.VITE_MINIMAX_TTS_SPEED, DEFAULT_DJ_VOICE.speed);
   const volume = toNumber(import.meta.env.VITE_MINIMAX_TTS_VOLUME, 1);
-  const pitch = toNumber(import.meta.env.VITE_MINIMAX_TTS_PITCH, DEFAULT_DJ_VOICE.pitch);
+  const pitch = toNumber(options.pitch ?? settings.pitch ?? import.meta.env.VITE_MINIMAX_TTS_PITCH, DEFAULT_DJ_VOICE.pitch);
   const emotion = String(import.meta.env.VITE_MINIMAX_TTS_EMOTION || '').trim();
   const useLocalProxy = import.meta.env.VITE_MINIMAX_TTS_USE_PROXY !== 'false';
 

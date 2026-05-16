@@ -7,6 +7,7 @@ import GlassPanel from './components/GlassPanel'
 import { GlassSettingsProvider, useGlassSettings } from './components/GlassSettings'
 import GlassSettingsPanel from './components/GlassSettingsPanel'
 import { loadXiaoMusicSettings, saveXiaoMusicSettings } from './services/xiaoMusicService'
+import { loadTtsSettings, saveTtsSettings, testTtsVoice, getTtsSettings } from './services/ttsService'
 
 const NORMAL_VOLUME = 0.7
 const DUCK_VOLUME = 0.18
@@ -287,6 +288,7 @@ export default function App() {
   const [xiaoStatus, setXiaoStatus] = useState({ type: 'idle', message: '' })
   const [xiaoDebug, setXiaoDebug] = useState(null)
   const [xiaoBusy, setXiaoBusy] = useState(false)
+  const [ttsSettings, setTtsSettings] = useState(() => loadTtsSettings())
   const [isQueueExpanded, setIsQueueExpanded] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -419,6 +421,7 @@ export default function App() {
       `[系统：歌曲已切换到 "${track.title}" - ${track.artist || '未知'}。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]`,
       {
         signal: controller.signal,
+        ttsSettings: getTtsSettings(),
         onEvent: (payload) => {
           const { event, data } = payload
           if (event === 'sentence_ready' && data?.text) {
@@ -445,6 +448,7 @@ export default function App() {
       `[系统：下一首歌是 "${nextTrack.title}" - ${nextTrack.artist || '未知'}。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]`,
       {
         signal: controller.signal,
+        ttsSettings: getTtsSettings(),
         onEvent: (payload) => {
           const { event, data } = payload
           if (event === 'sentence_ready' && data?.text) {
@@ -703,6 +707,16 @@ export default function App() {
     saveXiaoMusicSettings(next)
   }
 
+  function handleTtsSettingsChange(partial) {
+    const next = { ...ttsSettings, ...partial }
+    setTtsSettings(next)
+    saveTtsSettings(next)
+  }
+
+  function handleTestTtsVoice() {
+    testTtsVoice()
+  }
+
   function handleDetectXiaoDevices() {
     setXiaoBusy(true)
     setXiaoStatus({ type: 'idle', message: '正在检测设备...' })
@@ -740,6 +754,7 @@ export default function App() {
     try {
       await streamChatDjMessage(text, {
         signal: controller.signal,
+        ttsSettings: getTtsSettings(),
         onEvent: payload => handleServerEvent(assistantId, payload)
       })
     } catch (err) {
@@ -777,6 +792,9 @@ export default function App() {
           onNextXiao={() => {}}
           onSetXiaoVolume={() => {}}
           onXiaoSpeakerToggle={handleXiaoSpeakerToggle}
+          ttsSettings={ttsSettings}
+          onTtsSettingsChange={handleTtsSettingsChange}
+          onTestTtsVoice={handleTestTtsVoice}
         />
 
         <div className="relative z-10 flex h-full w-full items-center justify-center p-3 sm:p-4">

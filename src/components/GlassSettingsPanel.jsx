@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useGlassSettings } from './GlassSettings'
 import { XiaoMusicSettingsControls } from './XiaoMusicPanel'
+import { ALL_TTS_VOICES } from '../services/ttsService'
 
 export default function GlassSettingsPanel({
   xiaoSettings,
@@ -18,6 +19,9 @@ export default function GlassSettingsPanel({
   onNextXiao,
   onSetXiaoVolume,
   onXiaoSpeakerToggle,
+  ttsSettings,
+  onTtsSettingsChange,
+  onTestTtsVoice,
 }) {
   const { settings, update, reset } = useGlassSettings()
   const [isOpen, setIsOpen] = useState(false)
@@ -276,6 +280,111 @@ export default function GlassSettingsPanel({
               />
             </div>
           </div>
+
+          {ttsSettings && onTtsSettingsChange && (
+            <>
+              <div className="my-3 border-t" style={{ borderColor: 'rgba(0,0,0,0.06)' }} />
+              <h4 className="mb-2 text-[11px] font-semibold" style={{ color: '#4a318e' }}>DJ 语音设置</h4>
+
+              <div className="space-y-3">
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[11px] font-medium" style={{ color: '#7a7a7a' }}>语音语言</span>
+                  </div>
+                  <div
+                    className="grid grid-cols-3 gap-1 rounded-xl p-1"
+                    style={{ background: '#f5f5f7', border: '1px solid rgba(0,0,0,0.06)' }}
+                  >
+                    {[
+                      ['auto', '自动'],
+                      ['zh', '中文'],
+                      ['en', 'English'],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => onTtsSettingsChange({ language: value })}
+                        className="rounded-lg px-2 py-1.5 text-[11px] font-semibold transition-all"
+                        style={{
+                          background: ttsSettings.language === value ? '#ffffff' : 'transparent',
+                          color: ttsSettings.language === value ? '#4a318e' : '#7a7a7a',
+                          boxShadow: ttsSettings.language === value ? 'inset 0 0 0 1px rgba(0,0,0,0.06)' : 'none',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[11px] font-medium" style={{ color: '#7a7a7a' }}>语音音色</span>
+                  </div>
+                  <select
+                    value={ttsSettings.voiceId}
+                    onChange={(e) => onTtsSettingsChange({ voiceId: e.target.value })}
+                    className="w-full rounded-xl px-3 py-2 text-[11px] focus:outline-none"
+                    style={{ background: 'rgba(255,255,255,0.54)', border: '1px solid rgba(0,0,0,0.06)', color: '#171820' }}
+                  >
+                    {(ttsSettings.language === 'en' ? ALL_TTS_VOICES.en :
+                      ttsSettings.language === 'zh' ? ALL_TTS_VOICES.zh :
+                      [...ALL_TTS_VOICES.zh, ...ALL_TTS_VOICES.en]
+                    ).map(v => (
+                      <option key={v.id} value={v.id}>{v.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-[11px] font-medium" style={{ color: '#7a7a7a' }}>语速</span>
+                    <span className="text-[11px] font-mono" style={{ color: '#6B7280' }}>{ttsSettings.speed.toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.02"
+                    value={ttsSettings.speed}
+                    onChange={(e) => onTtsSettingsChange({ speed: Number(e.target.value) })}
+                    className="w-full h-1 accent-[#7C5CFF]"
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-[11px] font-medium" style={{ color: '#7a7a7a' }}>音调</span>
+                    <span className="text-[11px] font-mono" style={{ color: '#6B7280' }}>{ttsSettings.pitch}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-12"
+                    max="12"
+                    step="1"
+                    value={ttsSettings.pitch}
+                    onChange={(e) => onTtsSettingsChange({ pitch: Number(e.target.value) })}
+                    className="w-full h-1 accent-[#7C5CFF]"
+                  />
+                </div>
+
+                {onTestTtsVoice && (
+                  <button
+                    type="button"
+                    onClick={onTestTtsVoice}
+                    className="w-full rounded-xl py-2 text-[11px] font-semibold transition-all hover:opacity-90"
+                    style={{
+                      background: 'rgba(124,92,255,0.12)',
+                      border: '1px solid rgba(124,92,255,0.20)',
+                      color: '#4a318e',
+                    }}
+                  >
+                    试听语音
+                  </button>
+                )}
+              </div>
+            </>
+          )}
 
           {xiaoSettings && (
             <XiaoMusicSettingsControls

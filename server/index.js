@@ -458,14 +458,14 @@ function popCompleteSentences(pending) {
   return { sentences, rest }
 }
 
-async function createSpeech(text) {
+async function createSpeech(text, overrides = {}) {
   const cleanText = String(text || '').trim()
   if (!cleanText) return { text: cleanText, audioUrl: '', fallback: true }
   if (TTS_API_KEY) {
     return createOpenAiCompatibleSpeech(cleanText)
   }
   if (MINIMAX_TTS_API_KEY) {
-    return createMiniMaxSpeech(cleanText)
+    return createMiniMaxSpeech(cleanText, overrides)
   }
 
   return { text: cleanText, audioUrl: '', fallback: true, error: 'TTS_API_KEY or MINIMAX_TTS_API_KEY is not configured' }
@@ -512,7 +512,12 @@ function audioHexToBuffer(value) {
   return Buffer.from(cleanHex, 'hex')
 }
 
-async function createMiniMaxSpeech(cleanText) {
+async function createMiniMaxSpeech(cleanText, overrides = {}) {
+  const voiceId = String(overrides.voiceId || MINIMAX_TTS_VOICE).trim()
+  const speed = Math.min(2, Math.max(0.5, Number(overrides.speed ?? process.env.MINIMAX_TTS_SPEED ?? process.env.VITE_MINIMAX_TTS_SPEED ?? 1.04)))
+  const volume = Number(process.env.MINIMAX_TTS_VOLUME || process.env.VITE_MINIMAX_TTS_VOLUME || 1)
+  const pitch = Math.min(12, Math.max(-12, Number(overrides.pitch ?? process.env.MINIMAX_TTS_PITCH ?? process.env.VITE_MINIMAX_TTS_PITCH ?? -1)))
+
   const response = await fetch(`${MINIMAX_TTS_BASE_URL}/t2a_v2`, {
     method: 'POST',
     headers: {
@@ -525,10 +530,10 @@ async function createMiniMaxSpeech(cleanText) {
       stream: false,
       output_format: 'hex',
       voice_setting: {
-        voice_id: MINIMAX_TTS_VOICE,
-        speed: Number(process.env.MINIMAX_TTS_SPEED || process.env.VITE_MINIMAX_TTS_SPEED || 1.04),
-        vol: Number(process.env.MINIMAX_TTS_VOLUME || process.env.VITE_MINIMAX_TTS_VOLUME || 1),
-        pitch: Number(process.env.MINIMAX_TTS_PITCH ?? process.env.VITE_MINIMAX_TTS_PITCH ?? -1)
+        voice_id: voiceId,
+        speed,
+        vol: volume,
+        pitch
       },
       audio_setting: {
         sample_rate: 32000,
@@ -838,14 +843,14 @@ async function executeActions(actions, context, res) {
       if (track) {
         const text = `这首是 ${track.artist} 的《${track.title}》。我把它放在这里，是想让现在的气氛继续贴着你，不突然用力。`
         sseSend(res, 'assistant_delta', { text })
-        const speech = await createSpeech(text)
+        const speech = await createSpeech(text, context.ttsSettings || {})
         sseSend(res, 'sentence_ready', speech)
       }
       continue
     }
     if (type === 'speak' && action.text) {
       sseSend(res, 'assistant_delta', { text: action.text })
-      const speech = await createSpeech(action.text)
+      const speech = await createSpeech(action.text, context.ttsSettings || {})
       sseSend(res, 'sentence_ready', speech)
       continue
     }
@@ -952,6 +957,7 @@ async function handleChat(req, res) {
   const body = await readJsonBody(req)
   const userMessage = String(body.message || '').trim()
   const neteaseCookie = String(body.neteaseCookie || '').trim()
+  const ttsSettings = body.ttsSettings || null
   if (!userMessage) {
     jsonResponse(res, 400, { error: 'message is required' })
     return
@@ -983,7 +989,7 @@ async function handleChat(req, res) {
 
   const queueSentence = (sentence) => {
     const promise = ttsChain
-      .then(() => createSpeech(sentence))
+      .then(() => createSpeech(sentence, ttsSettings || {}))
       .then(result => sseSend(res, 'sentence_ready', result))
       .catch(error => sseSend(res, 'sentence_ready', { text: sentence, audioUrl: '', fallback: true, error: error.message }))
     ttsChain = promise.catch(() => {})
@@ -1011,7 +1017,7 @@ async function handleChat(req, res) {
   stateCache.messages.push({ id: randomUUID(), role: 'assistant', text: finalText, at: new Date().toISOString() })
   stateCache.messages = stateCache.messages.slice(-80)
   await Promise.allSettled(ttsPromises)
-  await executeActions(actions, { userMessage, neteaseCookie }, res)
+  await executeActions(actions, { userMessage, neteaseCookie, ttsSettings }, res)
   await saveState()
   sseSend(res, 'done', { state: publicState(), fallback: result.fallback || false })
   res.end()
