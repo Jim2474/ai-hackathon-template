@@ -287,6 +287,22 @@ export default function GlassSettingsPanel({
               <h4 className="mb-2 text-[11px] font-semibold" style={{ color: '#4a318e' }}>DJ 语音设置</h4>
 
               <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium" style={{ color: '#7a7a7a' }}>DJ 串场词</span>
+                  <button
+                    type="button"
+                    aria-pressed={ttsSettings.djTransitionsEnabled !== false}
+                    onClick={() => onTtsSettingsChange({ djTransitionsEnabled: ttsSettings.djTransitionsEnabled === false })}
+                    className="relative h-5 w-9 rounded-full transition-colors"
+                    style={{ background: ttsSettings.djTransitionsEnabled !== false ? '#4a318e' : 'rgba(0,0,0,0.12)' }}
+                  >
+                    <span
+                      className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
+                      style={{ left: 2, transform: ttsSettings.djTransitionsEnabled !== false ? 'translateX(14px)' : 'translateX(0)' }}
+                    />
+                  </button>
+                </div>
+
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-[11px] font-medium" style={{ color: '#7a7a7a' }}>语音语言</span>

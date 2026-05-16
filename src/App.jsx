@@ -524,24 +524,28 @@ export default function App() {
           setError('')
           setPhase('playing')
 
+          const djEnabled = ttsSettings.djTransitionsEnabled !== false
           const skipTransition = skipNextTransitionRef.current
           skipNextTransitionRef.current = false
 
-          const preloaded = preloadedTransitionRef.current
-          if (skipTransition) {
-            preloadedTransitionRef.current = null
-          } else if (preloaded?.ready && preloaded.track?.id === track.id) {
-            const cleaned = preloaded.ready.text.replace(/\[系统：[^\]]*\]/g, '').trim()
-            if (cleaned) {
-              setMessages(prev => [...prev, makeMessage('assistant', cleaned)])
-              enqueueVoice({ ...preloaded.ready, text: cleaned })
+          if (djEnabled) {
+            const preloaded = preloadedTransitionRef.current
+            if (skipTransition) {
+              preloadedTransitionRef.current = null
+            } else if (preloaded?.ready && preloaded.track?.id === track.id) {
+              const cleaned = preloaded.ready.text.replace(/\[系统：[^\]]*\]/g, '').trim()
+              if (cleaned) {
+                setMessages(prev => [...prev, makeMessage('assistant', cleaned)])
+                enqueueVoice({ ...preloaded.ready, text: cleaned })
+              }
+              preloadedTransitionRef.current = null
+            } else {
+              requestTransition(track)
             }
-            preloadedTransitionRef.current = null
+            setTimeout(() => preloadNextTransition(), 2000)
           } else {
-            requestTransition(track)
+            preloadedTransitionRef.current = null
           }
-
-          setTimeout(() => preloadNextTransition(), 2000)
         })
         .catch(() => {
           if (audioRef.current !== audio) return

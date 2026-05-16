@@ -15,7 +15,7 @@ export const DEFAULT_XIAOMUSIC_SETTINGS = {
   deviceDid: '',
   deviceName: '',
   playbackTarget: XIAOMUSIC_PLAYBACK_TARGETS.browser,
-  speakDjBeforeTrack: true,
+  speakDjBeforeTrack: false,
   autoPushOnTrackChange: true,
   ttsLeadMs: 350,
   volume: 60,
