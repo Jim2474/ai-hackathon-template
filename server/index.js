@@ -173,7 +173,7 @@ function getRecentMessagesForPrompt(messages = []) {
     .join('\n')
 }
 
-function buildAgentPrompt(userMessage) {
+function buildAgentPrompt(userMessage, ttsSettings) {
   let tasteText = ''
   try {
     tasteText = readFileSync(path.join(runtimeDir, 'taste.md'), 'utf8').trim()
@@ -196,7 +196,12 @@ function buildAgentPrompt(userMessage) {
   const current = stateCache.currentTrack
   const queuePreview = stateCache.queue.slice(0, 6).map((track, index) => `${index + 1}. ${track.title} - ${track.artist}`).join('\n')
 
-  return `你是 Claudio，一个朋友型私人 AI DJ。你在和用户聊天，也能帮用户找歌、切歌、解释当前歌曲。
+  const isEnglish = ttsSettings?.language === 'en'
+  const languagePrefix = isEnglish
+    ? `[LANGUAGE RULE: You MUST write ALL responses and DJ speak scripts in English. Use natural, poetic English. Keep Chinese song titles and artist names as-is, but all narration must be in English.]\n\n`
+    : ''
+
+  return `${languagePrefix}你是 Claudio，一个朋友型私人 AI DJ。你在和用户聊天，也能帮用户找歌、切歌、解释当前歌曲。
 
 风格：
 - 像朋友坐在旁边陪用户听歌，自然、松弛、少一点客服腔。
@@ -206,11 +211,11 @@ function buildAgentPrompt(userMessage) {
 - 每次找歌或切歌时，用 speak 动作说一段串场词，风格参考：
   * 像深夜一个人守着调音台的主播，在听众耳边轻声说话
   * 可以讲这首歌的故事、创作背景、或你第一次听到它的感觉
-  * 可以描述声音的画面感："a song that moves with your breath"、"let every line end in a whisper"
-  * 可以回应用户当下的状态："It's late on a Monday"、"After a long day, just breathe"
+  * 可以描述声音的画面感：”a song that moves with your breath”、”let every line end in a whisper”
+  * 可以回应用户当下的状态：”It's late on a Monday”、”After a long day, just breathe”
   * 串场词 2-5 句，最后一句自然地引出歌名
-  * 不要用"为您推荐"、"接下来播放"这种播报腔
-  * 不要每次都用"这首歌"开头，变化要多
+  * 不要用”为您推荐”、”接下来播放”这种播报腔
+  * 不要每次都用”这首歌”开头，变化要多
   * 语言可以中英混搭，也可以全中文，看心情
 
 当前状态：
@@ -268,6 +273,7 @@ function extractVisibleText(raw) {
 
 function sanitizeAssistantText(text) {
   const cleaned = String(text || '')
+    .replace(/\[系统：[^\]]*\]/g, '')
     .replace(/Permission to use [\s\S]*?Let the user decide how to proceed\./g, '')
     .replace(/<EXTREMELY_IMPORTANT>[\s\S]*?<\/EXTREMELY_IMPORTANT>/g, '')
     .replace(/```[\s\S]*?```/g, match => match.includes('digraph skill_flow') ? '' : match)
@@ -361,9 +367,9 @@ function fallbackAssistantText(userMessage) {
   return '我在。你可以就这样说，不用整理成命令。我会先听你说，再慢慢把音乐接上。'
 }
 
-function runClaude(userMessage, onText) {
+function runClaude(userMessage, onText, ttsSettings) {
   return new Promise((resolve) => {
-    const prompt = buildAgentPrompt(userMessage)
+    const prompt = buildAgentPrompt(userMessage, ttsSettings)
     const quotedClaudeBin = `"${CLAUDE_BIN.replace(/"/g, '\\"')}"`
     const bareArgs = process.env.CLAUDIO_CLAUDE_BARE === 'false' ? '' : '--bare '
     const command = `${quotedClaudeBin} -p ${bareArgs}--no-session-persistence --disable-slash-commands --strict-mcp-config --mcp-config "{\\"mcpServers\\":{}}" --output-format stream-json --verbose --include-partial-messages --tools "" --permission-mode dontAsk`
@@ -828,7 +834,15 @@ async function executeActions(actions, context, res) {
       continue
     }
     if (type === 'skip') {
-      sseSend(res, 'player_command', { action: 'skip' })
+      if (stateCache.queue.length > 1) {
+        const currentIndex = stateCache.queue.findIndex(t => t.id === stateCache.currentTrack?.id)
+        const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % stateCache.queue.length : 0
+        stateCache.currentTrack = stateCache.queue[nextIndex]
+        stateCache.isPlaying = true
+      }
+      if (stateCache.currentTrack) {
+        sseSend(res, 'now_playing', { track: stateCache.currentTrack, queue: stateCache.queue })
+      }
       continue
     }
     if (type === 'play_now') {
@@ -999,13 +1013,48 @@ async function handleChat(req, res) {
     ttsPromises.push(promise)
   }
 
-  const result = await runClaude(userMessage, (delta) => {
-    sseSend(res, 'assistant_delta', { text: delta })
-    pendingSentence += delta
+  // Delta buffer to strip [系统：...] instructions from streaming output
+  let deltaBuffer = ''
+  const MAX_HOLD = 500
+
+  function processDelta(text) {
+    if (!text) return
+    sseSend(res, 'assistant_delta', { text })
+    pendingSentence += text
     const popped = popCompleteSentences(pendingSentence)
     pendingSentence = popped.rest
     popped.sentences.forEach(queueSentence)
-  })
+  }
+
+  function flushBuffer() {
+    if (!deltaBuffer) return
+    deltaBuffer = deltaBuffer.replace(/\[系统：[^\]]*\]/g, '')
+    processDelta(deltaBuffer)
+    deltaBuffer = ''
+  }
+
+  const result = await runClaude(userMessage, (delta) => {
+    deltaBuffer += delta
+    const match = deltaBuffer.match(/\[系统：[^\]]*\]/)
+    if (match) {
+      const before = deltaBuffer.slice(0, match.index)
+      const after = deltaBuffer.slice(match.index + match[0].length)
+      deltaBuffer = ''
+      processDelta(before)
+      deltaBuffer = after
+    } else if (deltaBuffer.length > MAX_HOLD) {
+      const lastBracket = deltaBuffer.lastIndexOf('[')
+      if (lastBracket > 0) {
+        const safe = deltaBuffer.slice(0, lastBracket)
+        deltaBuffer = deltaBuffer.slice(lastBracket)
+        processDelta(safe)
+      } else {
+        flushBuffer()
+      }
+    }
+  }, ttsSettings)
+
+  flushBuffer()
 
   const finalText = result.text.trim()
   if (pendingSentence.trim()) {

@@ -322,7 +322,8 @@ export default function NeteaseCenter({ isOpen, onClose, onPlayTracks }) {
   return (
     <GlassPanel
       preset="panel"
-      className="flex h-full flex-col rounded-[24px] px-5 py-4"
+      className="h-full rounded-[24px] px-5 py-4"
+      contentClassName="relative z-10 flex h-full flex-col"
       style={{ background: 'rgba(255,255,255,0.58)', border: '1px solid rgba(255,255,255,0.34)' }}
     >
       {/* Header */}

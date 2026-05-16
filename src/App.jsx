@@ -297,6 +297,8 @@ export default function App() {
   const voiceQueueRef = useRef([])
   const isVoicePlayingRef = useRef(false)
   const pendingTrackRef = useRef(null)
+  const currentTrackIdRef = useRef(null)
+  const queueRef = useRef([])
   const chatRef = useRef(null)
   const abortRef = useRef(null)
   const transitionAbortRef = useRef(null)
@@ -369,6 +371,8 @@ export default function App() {
     chatRef.current.scrollTop = chatRef.current.scrollHeight
   }, [messages, phase])
 
+  useEffect(() => { queueRef.current = queue }, [queue])
+
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return undefined
@@ -382,9 +386,19 @@ export default function App() {
     }
   }, [currentTrack])
 
+  function filterSystemInstruction(text) {
+    if (!text) return text
+    return text
+      .replace(/\[系统：[^\]]*\]/g, '')
+      .replace(/<claudio_actions>[\s\S]*?<\/claudio_actions>/g, '')
+      .trim()
+  }
+
   function updateAssistantMessage(id, delta) {
+    const filtered = filterSystemInstruction(delta)
+    if (!filtered) return
     setMessages(prev => prev.map(message => (
-      message.id === id ? { ...message, text: `${message.text || ''}${delta}` } : message
+      message.id === id ? { ...message, text: `${message.text || ''}${filtered}` } : message
     )))
   }
 
@@ -425,8 +439,10 @@ export default function App() {
         onEvent: (payload) => {
           const { event, data } = payload
           if (event === 'sentence_ready' && data?.text) {
-            setMessages(prev => [...prev, makeMessage('assistant', data.text)])
-            enqueueVoice(data)
+            const cleaned = data.text.replace(/\[系统：[^\]]*\]/g, '').trim()
+            if (!cleaned) return
+            setMessages(prev => [...prev, makeMessage('assistant', cleaned)])
+            enqueueVoice({ ...data, text: cleaned })
           }
         }
       }
@@ -434,13 +450,15 @@ export default function App() {
   }
 
   function preloadNextTransition() {
-    if (queue.length === 0) return
-    const currentIndex = queue.findIndex(t => t.id === currentTrack?.id)
-    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % queue.length : 0
-    const nextTrack = queue[nextIndex]
+    const q = queueRef.current
+    if (q.length === 0) return
+    const currentId = currentTrackIdRef.current || currentTrack?.id
+    const currentIndex = q.findIndex(t => t.id === currentId)
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % q.length : 0
+    const nextTrack = q[nextIndex]
     if (!nextTrack) return
 
-    preloadedTransitionRef.current?.abort()
+    preloadedTransitionRef.current?.controller?.abort()
     const controller = new AbortController()
     preloadedTransitionRef.current = { track: nextTrack, controller }
 
@@ -452,7 +470,9 @@ export default function App() {
         onEvent: (payload) => {
           const { event, data } = payload
           if (event === 'sentence_ready' && data?.text) {
-            preloadedTransitionRef.current = { ...preloadedTransitionRef.current, ready: data }
+            const cleaned = data.text.replace(/\[系统：[^\]]*\]/g, '').trim()
+            if (!cleaned) return
+            preloadedTransitionRef.current = { ...preloadedTransitionRef.current, ready: { ...data, text: cleaned } }
           }
         }
       }
@@ -460,57 +480,74 @@ export default function App() {
   }
 
   function startMusic(track) {
-    console.log('[NAV DEBUG] startMusic called:', track?.title, 'audioUrl:', !!track?.audioUrl)
     if (!track?.audioUrl) {
       setError('这首歌暂时没有可播放地址。')
       return
     }
 
     transitionAbortRef.current?.abort()
-    preloadedTransitionRef.current?.abort()
+    preloadedTransitionRef.current?.controller?.abort()
 
     if (audioRef.current) {
       audioRef.current.pause()
+      audioRef.current.onended = null
+      audioRef.current.onerror = null
     }
 
     const audio = new Audio(track.audioUrl)
     audio.volume = isVoicePlayingRef.current ? DUCK_VOLUME : volume
     audioRef.current = audio
+    currentTrackIdRef.current = track.id
     setCurrentTrack(track)
     setTrackTime(0)
     setTrackDuration(track.duration || FALLBACK_DURATION)
     setPhase('loading')
 
-    audio.play()
-      .then(() => {
-        console.log('[NAV DEBUG] audio.play() succeeded')
-        setError('')
-        setPhase('playing')
-
-        const skipTransition = skipNextTransitionRef.current
-        skipNextTransitionRef.current = false
-
-        const preloaded = preloadedTransitionRef.current
-        if (skipTransition) {
-          preloadedTransitionRef.current = null
-        } else if (preloaded?.ready && preloaded.track?.id === track.id) {
-          setMessages(prev => [...prev, makeMessage('assistant', preloaded.ready.text)])
-          enqueueVoice(preloaded.ready)
-          preloadedTransitionRef.current = null
-        } else {
-          requestTransition(track)
-        }
-
-        setTimeout(() => preloadNextTransition(), 2000)
-      })
-      .catch((err) => {
-        console.log('[NAV DEBUG] audio.play() failed:', err)
-        setPhase('paused')
-        setError('浏览器拦截了自动播放。请点播放按钮继续。')
-      })
-
+    // Set onended BEFORE play() so it's always registered
     audio.onended = () => {
       playNextTrack()
+    }
+
+    // Handle audio load errors (network, 404, etc.)
+    audio.onerror = () => {
+      setError(`播放失败：${track.title}`)
+      setPhase('paused')
+      // Don't auto-advance on error — let user decide
+    }
+
+    const playPromise = audio.play()
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          // Guard: if a new track was started while this promise was pending, bail out
+          if (audioRef.current !== audio) return
+          setError('')
+          setPhase('playing')
+
+          const skipTransition = skipNextTransitionRef.current
+          skipNextTransitionRef.current = false
+
+          const preloaded = preloadedTransitionRef.current
+          if (skipTransition) {
+            preloadedTransitionRef.current = null
+          } else if (preloaded?.ready && preloaded.track?.id === track.id) {
+            const cleaned = preloaded.ready.text.replace(/\[系统：[^\]]*\]/g, '').trim()
+            if (cleaned) {
+              setMessages(prev => [...prev, makeMessage('assistant', cleaned)])
+              enqueueVoice({ ...preloaded.ready, text: cleaned })
+            }
+            preloadedTransitionRef.current = null
+          } else {
+            requestTransition(track)
+          }
+
+          setTimeout(() => preloadNextTransition(), 2000)
+        })
+        .catch(() => {
+          if (audioRef.current !== audio) return
+          setPhase('paused')
+          setError('浏览器拦截了自动播放。请点播放按钮继续。')
+        })
     }
   }
 
@@ -523,7 +560,6 @@ export default function App() {
   }
 
   function finishVoiceItem() {
-    console.log('[VOICE DEBUG] finishVoiceItem called, queue length:', voiceQueueRef.current.length)
     isVoicePlayingRef.current = false
     setIsVoicePlaying(false)
     setActiveVoice(null)
@@ -590,6 +626,7 @@ export default function App() {
   function handleNowPlaying(track, nextQueue = queue) {
     setCurrentTrack(track)
     if (Array.isArray(nextQueue)) setQueue(nextQueue)
+    if (currentTrackIdRef.current === track.id && audioRef.current) return
     if (isVoicePlayingRef.current || voiceQueueRef.current.length > 0) {
       pendingTrackRef.current = track
       setPhase('queued')
@@ -599,21 +636,31 @@ export default function App() {
   }
 
   function playNextTrack() {
-    console.log('[NAV DEBUG] playNextTrack called, queue.length:', queue.length, 'isVoicePlaying:', isVoicePlayingRef.current, 'phase:', phase)
-    if (queue.length === 0) return
-    const index = queue.findIndex(track => track.id === currentTrack?.id)
-    const next = queue[index >= 0 ? (index + 1) % queue.length : 0]
-    console.log('[NAV DEBUG] next track:', next?.title, 'index:', index)
-    if (next) {
-      startMusic(next)
-      sendPlayerControl('skip').catch(() => {})
+    const q = queueRef.current
+    if (q.length === 0) return
+    const currentId = currentTrackIdRef.current || currentTrack?.id
+    const index = q.findIndex(track => track.id === currentId)
+    const next = q[index >= 0 ? (index + 1) % q.length : 0]
+    if (!next) return
+    if (!next.audioUrl) {
+      const skipIndex = q.indexOf(next)
+      const fallback = q[(skipIndex + 1) % q.length]
+      if (fallback && fallback.audioUrl) {
+        startMusic(fallback)
+        sendPlayerControl('skip').catch(() => {})
+      }
+      return
     }
+    startMusic(next)
+    sendPlayerControl('skip').catch(() => {})
   }
 
   function playPreviousTrack() {
-    if (queue.length === 0) return
-    const index = queue.findIndex(track => track.id === currentTrack?.id)
-    const prev = queue[index > 0 ? index - 1 : queue.length - 1]
+    const q = queueRef.current
+    if (q.length === 0) return
+    const currentId = currentTrackIdRef.current || currentTrack?.id
+    const index = q.findIndex(track => track.id === currentId)
+    const prev = q[index > 0 ? index - 1 : q.length - 1]
     if (prev) startMusic(prev)
   }
 
@@ -1096,7 +1143,7 @@ export default function App() {
             onClick={() => setIsNeteaseLibraryOpen(false)}
           >
             <div
-              className="h-[min(790px,calc(100vh-24px))] w-[460px] max-w-[calc(100vw-18px)]"
+              className="h-[min(790px,calc(100vh-24px))] w-[460px] max-w-[calc(100vw-18px)] overflow-hidden"
               onClick={e => e.stopPropagation()}
               onWheel={e => e.stopPropagation()}
             >
