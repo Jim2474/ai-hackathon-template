@@ -323,7 +323,7 @@ export default function NeteaseCenter({ isOpen, onClose, onPlayTracks }) {
     <GlassPanel
       preset="panel"
       className="flex h-full flex-col rounded-[24px] px-5 py-4"
-      style={{ background: 'rgba(255,255,255,0.58)', border: '1px solid rgba(255,255,255,0.34)', overflow: 'visible' }}
+      style={{ background: 'rgba(255,255,255,0.58)', border: '1px solid rgba(255,255,255,0.34)' }}
     >
       {/* Header */}
       <div className="mb-4 flex items-start justify-between gap-3">
