@@ -849,9 +849,12 @@ async function executeActions(actions, context, res) {
       continue
     }
     if (type === 'speak' && action.text) {
-      sseSend(res, 'assistant_delta', { text: action.text })
-      const speech = await createSpeech(action.text, context.ttsSettings || {})
-      sseSend(res, 'sentence_ready', speech)
+      const normalized = action.text.replace(/\s+/g, '').toLowerCase()
+      if (!context.spokenTexts?.has(normalized)) {
+        sseSend(res, 'assistant_delta', { text: action.text })
+        const speech = await createSpeech(action.text, context.ttsSettings || {})
+        sseSend(res, 'sentence_ready', speech)
+      }
       continue
     }
     if (type === 'load_favorites') {
@@ -986,8 +989,12 @@ async function handleChat(req, res) {
   let pendingSentence = ''
   const ttsPromises = []
   let ttsChain = Promise.resolve()
+  const spokenTexts = new Set()
 
   const queueSentence = (sentence) => {
+    const normalized = sentence.replace(/\s+/g, '').toLowerCase()
+    if (spokenTexts.has(normalized)) return
+    spokenTexts.add(normalized)
     const promise = ttsChain
       .then(() => createSpeech(sentence, ttsSettings || {}))
       .then(result => sseSend(res, 'sentence_ready', result))
@@ -1017,7 +1024,7 @@ async function handleChat(req, res) {
   stateCache.messages.push({ id: randomUUID(), role: 'assistant', text: finalText, at: new Date().toISOString() })
   stateCache.messages = stateCache.messages.slice(-80)
   await Promise.allSettled(ttsPromises)
-  await executeActions(actions, { userMessage, neteaseCookie, ttsSettings }, res)
+  await executeActions(actions, { userMessage, neteaseCookie, ttsSettings, spokenTexts }, res)
   await saveState()
   sseSend(res, 'done', { state: publicState(), fallback: result.fallback || false })
   res.end()

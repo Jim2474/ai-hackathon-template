@@ -536,10 +536,11 @@ export default function App() {
       finishVoiceItem()
       return
     }
+    const settings = getTtsSettings()
     const utterance = new SpeechSynthesisUtterance(item.text)
-    utterance.lang = 'zh-CN'
-    utterance.rate = 1.10
-    utterance.pitch = 1.02
+    utterance.lang = settings.language === 'en' ? 'en-US' : 'zh-CN'
+    utterance.rate = settings.speed || 1.10
+    utterance.pitch = settings.pitch || 1.02
     utterance.onend = finishVoiceItem
     utterance.onerror = finishVoiceItem
     window.speechSynthesis.cancel()
