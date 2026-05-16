@@ -696,9 +696,16 @@ async function syncMusicLibrary(cookie) {
     return songs
   }
 
+  // Get user ID from cookie
+  let userId = ''
+  try {
+    const accountData = await requestNetease('/user/account', { cookie })
+    userId = accountData?.account?.id || accountData?.profile?.userId || ''
+  } catch {}
+
   // Fetch playlists and their songs
   try {
-    const playlistData = await requestNetease('/user/playlist', { uid: '', cookie, limit: 50 })
+    const playlistData = await requestNetease('/user/playlist', { uid: userId, cookie, limit: 50 })
     const playlists = playlistData?.playlist || []
     if (playlists.length > 0) {
       lines.push(`## 我的歌单（${playlists.length} 个）\n`)
@@ -735,7 +742,7 @@ async function syncMusicLibrary(cookie) {
 
   // Fetch liked songs (收藏歌曲)
   try {
-    const likedData = await requestNetease('/likelist', { cookie })
+    const likedData = await requestNetease('/likelist', { uid: userId, cookie })
     const likedIds = likedData?.ids || []
     lines.push(`## 收藏歌曲（共 ${likedIds.length} 首）\n`)
 
