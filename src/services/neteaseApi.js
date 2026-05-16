@@ -1,4 +1,4 @@
-const DEFAULT_NETEASE_BASE_URL = 'http://localhost:3000'
+const DEFAULT_NETEASE_BASE_URL = '/api/netease'
 const NETEASE_COOKIE_STORAGE_KEY = 'moodwave_netease_cookie'
 
 function getNeteaseBaseUrl() {
@@ -7,7 +7,8 @@ function getNeteaseBaseUrl() {
 
 function buildUrl(path, params = {}) {
   const safePath = path.startsWith('/') ? path : `/${path}`
-  const url = new URL(`${getNeteaseBaseUrl()}${safePath}`)
+  const baseUrl = getNeteaseBaseUrl()
+  const url = new URL(`${baseUrl}${safePath}`, window.location.origin)
 
   Object.entries(params).forEach(([key, value]) => {
     if (key !== 'allowedCodes' && value !== undefined && value !== null && value !== '') {
@@ -128,7 +129,7 @@ export async function requestNetease(path, params = {}) {
   try {
     response = await fetch(url)
   } catch {
-    throw new Error(`网易云 API 没连上。请先启动 Docker，并检查 ${DEFAULT_NETEASE_BASE_URL}/search?keywords=周杰伦`)
+    throw new Error('网易云 API 没连上。请先启动本机网易云 API 服务，并确认 Claudio 后端正在运行。')
   }
 
   if (!response.ok) {

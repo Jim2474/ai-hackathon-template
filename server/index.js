@@ -517,6 +517,7 @@ async function createMiniMaxSpeech(cleanText, overrides = {}) {
   const speed = Math.min(2, Math.max(0.5, Number(overrides.speed ?? process.env.MINIMAX_TTS_SPEED ?? process.env.VITE_MINIMAX_TTS_SPEED ?? 1.04)))
   const volume = Number(process.env.MINIMAX_TTS_VOLUME || process.env.VITE_MINIMAX_TTS_VOLUME || 1)
   const pitch = Math.min(12, Math.max(-12, Number(overrides.pitch ?? process.env.MINIMAX_TTS_PITCH ?? process.env.VITE_MINIMAX_TTS_PITCH ?? -1)))
+  console.log('[TTS DEBUG] createMiniMaxSpeech:', cleanText.slice(0, 30), '| voiceId:', voiceId, '| overrides:', JSON.stringify(overrides))
 
   const response = await fetch(`${MINIMAX_TTS_BASE_URL}/t2a_v2`, {
     method: 'POST',
@@ -850,7 +851,9 @@ async function executeActions(actions, context, res) {
     }
     if (type === 'speak' && action.text) {
       const normalized = action.text.replace(/\s+/g, '').toLowerCase()
-      if (!context.spokenTexts?.has(normalized)) {
+      const alreadySpoken = context.spokenTexts?.has(normalized)
+      console.log('[TTS DEBUG] speak action:', action.text.slice(0, 40), '| alreadySpoken:', alreadySpoken, '| ttsSettings:', JSON.stringify(context.ttsSettings))
+      if (!alreadySpoken) {
         sseSend(res, 'assistant_delta', { text: action.text })
         const speech = await createSpeech(action.text, context.ttsSettings || {})
         sseSend(res, 'sentence_ready', speech)
@@ -961,6 +964,7 @@ async function handleChat(req, res) {
   const userMessage = String(body.message || '').trim()
   const neteaseCookie = String(body.neteaseCookie || '').trim()
   const ttsSettings = body.ttsSettings || null
+  console.log('[TTS DEBUG] Received ttsSettings:', JSON.stringify(ttsSettings))
   if (!userMessage) {
     jsonResponse(res, 400, { error: 'message is required' })
     return
@@ -993,8 +997,12 @@ async function handleChat(req, res) {
 
   const queueSentence = (sentence) => {
     const normalized = sentence.replace(/\s+/g, '').toLowerCase()
-    if (spokenTexts.has(normalized)) return
+    if (spokenTexts.has(normalized)) {
+      console.log('[TTS DEBUG] Skipping duplicate sentence:', sentence.slice(0, 40))
+      return
+    }
     spokenTexts.add(normalized)
+    console.log('[TTS DEBUG] queueSentence:', sentence.slice(0, 40), '| ttsSettings:', JSON.stringify(ttsSettings))
     const promise = ttsChain
       .then(() => createSpeech(sentence, ttsSettings || {}))
       .then(result => sseSend(res, 'sentence_ready', result))

@@ -41,5 +41,16 @@ export default [
       globals: globals.node,
       sourceType: 'module'
     }
+  },
+  {
+    files: ['server/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      globals: {
+        ...globals.node,
+        fetch: 'readonly'
+      },
+      sourceType: 'module'
+    }
   }
 ]
