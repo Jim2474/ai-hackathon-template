@@ -235,21 +235,26 @@ ${libraryText ? `用户的音乐库（以下是用户收藏的歌曲和歌单，
 ${getRecentMessagesForPrompt(stateCache.messages)}
 
 工具动作：
-如果用户想听歌、换歌、找相似、调整氛围，请在回复最后追加一个隐藏动作块：
-<claudio_actions>{"mood":"calm","actions":[{"type":"search_music","query":"轻松 中文 流行","count":5}]}</claudio_actions>
+当用户想听歌、换歌、找相似、调整氛围时，你必须直接行动，不要列出歌曲让用户选择。
+在回复最后追加一个隐藏动作块，把歌直接推到播放列表：
 
-允许的 action type 只有：
-- search_music: {"type":"search_music","query":"关键词","count":5}
+<claudio_actions>{"mood":"calm","actions":[{"type":"search_music","query":"安静 轻音乐","count":5}]}</claudio_actions>
+
+允许的 action type：
+- search_music: {"type":"search_music","query":"关键词","count":5} — 直接搜索并加入播放列表
 - play_now: {"type":"play_now"}
 - pause: {"type":"pause"}
 - skip: {"type":"skip"}
 - explain_current: {"type":"explain_current"}
 - adjust_mood: {"type":"adjust_mood","mood":"calm"}
-- speak: {"type":"speak","text":"你想说的串场词或过渡语"}
+- speak: {"type":"speak","text":"串场词或过渡语"}
 - load_favorites: {"type":"load_favorites","count":5}
 
-如果只是普通聊天，可以不写动作块。
-动作块不要解释给用户看。
+关键规则：
+- 用户说"想听安静的""来几首""换个氛围"等，直接用 search_music 搜歌推到播放列表，不要问用户要哪首。
+- 你的文字回复简短（1-2句），然后用 speak 动作说串场词。
+- 不要列出歌曲名称让用户选择，直接行动。
+- 动作块不要解释给用户看。
 
 用户刚说：${userMessage}`
 }
