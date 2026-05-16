@@ -395,7 +395,6 @@ export default function App() {
   }
 
   function restoreMusic() {
-    console.log('[VOICE DEBUG] restoreMusic called, volume:', volume, 'audioRef:', !!audioRef.current, 'paused:', audioRef.current?.paused)
     if (audioRef.current && !audioRef.current.paused) {
       audioRef.current.volume = volume
     }
@@ -521,16 +520,13 @@ export default function App() {
   }
 
   function finishVoiceItem() {
-    console.log('[VOICE DEBUG] finishVoiceItem called, queue length:', voiceQueueRef.current.length)
     isVoicePlayingRef.current = false
     setIsVoicePlaying(false)
     setActiveVoice(null)
     if (voiceQueueRef.current.length > 0) {
-      console.log('[VOICE DEBUG] More voices in queue, playing next')
       playNextVoice()
       return
     }
-    console.log('[VOICE DEBUG] Queue empty, restoring music volume')
     restoreMusic()
     maybeStartPendingTrack()
   }
@@ -555,12 +551,10 @@ export default function App() {
     if (isVoicePlayingRef.current) return
     const item = voiceQueueRef.current.shift()
     if (!item) {
-      console.log('[VOICE DEBUG] playNextVoice: no items, calling maybeStartPendingTrack')
       maybeStartPendingTrack()
       return
     }
 
-    console.log('[VOICE DEBUG] playNextVoice:', item.text?.slice(0, 40), '| audioUrl:', !!item.audioUrl)
     isVoicePlayingRef.current = true
     setIsVoicePlaying(true)
     setActiveVoice(item)
@@ -647,13 +641,11 @@ export default function App() {
 
   function handleServerEvent(assistantId, event) {
     const { event: eventName, data } = event
-    console.log('[EVENT DEBUG]', eventName, data?.text?.slice(0, 40), '| audioUrl:', !!data?.audioUrl)
     if (eventName === 'assistant_delta') {
       updateAssistantMessage(assistantId, data.text || '')
       return
     }
     if (eventName === 'sentence_ready') {
-      console.log('[EVENT DEBUG] sentence_ready enqueued:', data?.text?.slice(0, 40), '| audioUrl:', !!data?.audioUrl)
       skipNextTransitionRef.current = true
       enqueueVoice(data)
       return
