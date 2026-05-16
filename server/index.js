@@ -1002,13 +1002,15 @@ async function handleChat(req, res) {
   const spokenTexts = new Set()
 
   const queueSentence = (sentence) => {
-    const normalized = sentence.replace(/\s+/g, '').toLowerCase()
+    const cleaned = sentence.replace(/\[系统：[^\]]*\]/g, '').trim()
+    if (!cleaned) return
+    const normalized = cleaned.replace(/\s+/g, '').toLowerCase()
     if (spokenTexts.has(normalized)) return
     spokenTexts.add(normalized)
     const promise = ttsChain
-      .then(() => createSpeech(sentence, ttsSettings || {}))
-      .then(result => sseSend(res, 'sentence_ready', result))
-      .catch(error => sseSend(res, 'sentence_ready', { text: sentence, audioUrl: '', fallback: true, error: error.message }))
+      .then(() => createSpeech(cleaned, ttsSettings || {}))
+      .then(result => sseSend(res, 'sentence_ready', { ...result, text: cleaned }))
+      .catch(error => sseSend(res, 'sentence_ready', { text: cleaned, audioUrl: '', fallback: true, error: error.message }))
     ttsChain = promise.catch(() => {})
     ttsPromises.push(promise)
   }
