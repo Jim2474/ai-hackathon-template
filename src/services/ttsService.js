@@ -77,7 +77,6 @@ const DEFAULT_TTS_SETTINGS = {
   language: 'auto',
   speed: DEFAULT_DJ_VOICE.speed,
   pitch: DEFAULT_DJ_VOICE.pitch,
-  djTransitionsEnabled: false,
 }
 
 let runtimeTtsSettings = { ...DEFAULT_TTS_SETTINGS }
