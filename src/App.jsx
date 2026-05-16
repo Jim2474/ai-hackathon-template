@@ -460,6 +460,7 @@ export default function App() {
   }
 
   function startMusic(track) {
+    console.log('[NAV DEBUG] startMusic called:', track?.title, 'audioUrl:', !!track?.audioUrl)
     if (!track?.audioUrl) {
       setError('这首歌暂时没有可播放地址。')
       return
@@ -482,6 +483,7 @@ export default function App() {
 
     audio.play()
       .then(() => {
+        console.log('[NAV DEBUG] audio.play() succeeded')
         setError('')
         setPhase('playing')
 
@@ -501,7 +503,8 @@ export default function App() {
 
         setTimeout(() => preloadNextTransition(), 2000)
       })
-      .catch(() => {
+      .catch((err) => {
+        console.log('[NAV DEBUG] audio.play() failed:', err)
         setPhase('paused')
         setError('浏览器拦截了自动播放。请点播放按钮继续。')
       })
@@ -520,6 +523,7 @@ export default function App() {
   }
 
   function finishVoiceItem() {
+    console.log('[VOICE DEBUG] finishVoiceItem called, queue length:', voiceQueueRef.current.length)
     isVoicePlayingRef.current = false
     setIsVoicePlaying(false)
     setActiveVoice(null)
@@ -595,9 +599,11 @@ export default function App() {
   }
 
   function playNextTrack() {
+    console.log('[NAV DEBUG] playNextTrack called, queue.length:', queue.length, 'isVoicePlaying:', isVoicePlayingRef.current, 'phase:', phase)
     if (queue.length === 0) return
     const index = queue.findIndex(track => track.id === currentTrack?.id)
     const next = queue[index >= 0 ? (index + 1) % queue.length : 0]
+    console.log('[NAV DEBUG] next track:', next?.title, 'index:', index)
     if (next) {
       startMusic(next)
       sendPlayerControl('skip').catch(() => {})
@@ -1092,6 +1098,7 @@ export default function App() {
             <div
               className="h-[min(790px,calc(100vh-24px))] w-[460px] max-w-[calc(100vw-18px)]"
               onClick={e => e.stopPropagation()}
+              onWheel={e => e.stopPropagation()}
             >
               <NeteaseCenter
                 isOpen={isNeteaseLibraryOpen}
