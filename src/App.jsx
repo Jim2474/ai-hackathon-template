@@ -6,7 +6,7 @@ import NeteaseLoginPanel from './components/NeteaseLoginPanel'
 import GlassPanel from './components/GlassPanel'
 import { GlassSettingsProvider, useGlassSettings } from './components/GlassSettings'
 import GlassSettingsPanel from './components/GlassSettingsPanel'
-import { loadXiaoMusicSettings, saveXiaoMusicSettings } from './services/xiaoMusicService'
+import { loadXiaoMusicSettings, saveXiaoMusicSettings, getXiaoMusicDevices } from './services/xiaoMusicService'
 import { loadTtsSettings, saveTtsSettings, testTtsVoice, getTtsSettings } from './services/ttsService'
 
 const NORMAL_VOLUME = 0.7
@@ -771,13 +771,25 @@ export default function App() {
     testTtsVoice()
   }
 
-  function handleDetectXiaoDevices() {
+  async function handleDetectXiaoDevices() {
     setXiaoBusy(true)
     setXiaoStatus({ type: 'idle', message: '正在检测设备...' })
-    setTimeout(() => {
+    try {
+      const devices = await getXiaoMusicDevices(xiaoSettings)
+      setXiaoDevices(devices)
+      if (devices.length > 0) {
+        setXiaoStatus({ type: 'ok', message: `检测到 ${devices.length} 个设备` })
+        if (!xiaoSettings.deviceDid && devices[0]) {
+          handleXiaoSettingsChange({ deviceDid: devices[0].did, deviceName: devices[0].name })
+        }
+      } else {
+        setXiaoStatus({ type: 'error', message: '未检测到设备，请检查地址和网络' })
+      }
+    } catch (err) {
+      setXiaoStatus({ type: 'error', message: err.message || '检测失败' })
+    } finally {
       setXiaoBusy(false)
-      setXiaoStatus({ type: 'idle', message: '检测完成' })
-    }, 1000)
+    }
   }
 
   function handleXiaoSpeakerToggle(enabled) {
