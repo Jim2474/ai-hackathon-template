@@ -683,7 +683,7 @@ export default function App() {
   function handleNowPlaying(track, nextQueue = queue) {
     setCurrentTrack(track)
     if (Array.isArray(nextQueue)) setQueue(nextQueue)
-    if (currentTrackIdRef.current === track.id && audioRef.current) return
+    if (currentTrackIdRef.current === track.id && (audioRef.current || isXiaoSpeakerMode())) return
     if (isVoicePlayingRef.current || voiceQueueRef.current.length > 0) {
       pendingTrackRef.current = track
       setPhase('queued')
