@@ -1,0 +1,238 @@
+- generic [ref=e3]:
+  - button "液态玻璃设置" [ref=e4] [cursor=pointer]: ⚙
+  - generic [ref=e7]:
+    - banner [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - paragraph [ref=e12]: Claudio
+            - generic [ref=e13]: radio
+          - generic [ref=e16]: Playing · Connected to Claudio server
+        - generic [ref=e17]: 12:20 PM
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - paragraph [ref=e22]: Calm 02
+          - paragraph [ref=e23]: Local Demo Audio · Local
+        - button "我的网易云" [ref=e24] [cursor=pointer]
+    - main [ref=e80]:
+      - generic [ref=e171]:
+        - generic [ref=e173]: Claudio
+        - text: 周六上午，从梁博的沉吟一下子跳到林子祥——你知道吗，这个人唱歌从来不藏力气，他的声音像一整面墙的阳光直接照进来。这首歌简单到不行，就是一个男人说我每分每秒都需要你，没有修辞，没有铺垫，就是那么直。有时候最笨的情话反而最动人。 分分钟需要你。
+      - generic [ref=e176]:
+        - generic [ref=e178]: Claudio
+        - text: 周六上午，从林子祥的大开大合到梁静茹的细腻收敛，像是从阳光走进了半开的窗帘后面——不暗，但柔和了很多。 今天放的歌好像一直在绕着"情"这个字打转，不是刻意的，是你歌单里本来就有这个底色。
+      - generic [ref=e181]: "[系统：歌曲已切换到 \"情歌\" - 梁静茹。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e184]: "[系统：歌曲已切换到 \"我喜欢\" - 梁静茹。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e187]: "[系统：下一首歌是 \"我喜欢\" - 梁静茹。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e190]:
+        - generic [ref=e192]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e195]:
+        - generic [ref=e197]: Claudio
+        - text: 周末的上午渐渐有了温度，梁静茹的声音好像一直都在某个角落等你翻出来。这首歌不讲轰轰烈烈的事，就是一个人在数着生活里那些小小的喜欢——阳光、咖啡、窗外的风、和你。简单到让人想笑，但笑着笑着眼眶会热。 我喜欢。
+      - generic [ref=e200]:
+        - generic [ref=e202]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e205]: "[系统：歌曲已切换到 \"Yellow\" - Coldplay。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e208]: "[系统：下一首歌是 \"用力抱着\" - 梁静茹。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e211]:
+        - generic [ref=e213]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e216]:
+        - generic [ref=e218]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e221]: "[系统：歌曲已切换到 \"Yellow\" - Coldplay。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e224]: "[系统：下一首歌是 \"I Don't\" - 黄河水Yellow River / MZ毛毡。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e227]:
+        - generic [ref=e229]: Claudio
+        - text: 周六上午，窗外的光刚刚好。Chris Martin 说过，写这首歌的时候，他抬头看着星空，然后低头看到了一本电话簿上的"Yellow"这个词——大概灵感就是这么不讲道理，从宇宙掉进日常里。这首歌不是什么复杂的情话，就是一个念头，抬头看到满天星光，然后觉得每一颗都该写上你的名字。 Yellow。
+      - generic [ref=e232]:
+        - generic [ref=e234]: Claudio
+        - text: 周六上午，阳光刚好不刺眼，耳朵还留着刚才那层 Yellow 的余温。有些歌是不需要解释的，就像有些人走进房间你不用看就知道是谁。这个组合很妙——黄河水和 MZ毛毡，带着一点不驯服的劲儿，像是有人在你面前说"我不要"，但语气里全是温柔的倔强。
+      - generic [ref=e237]: "[系统：歌曲已切换到 \"Yellow\" - Coldplay。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e240]: "[系统：歌曲已切换到 \"I Don't\" - 黄河水Yellow River / MZ毛毡。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e243]: "[系统：下一首歌是 \"I Don't\" - 黄河水Yellow River / MZ毛毡。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e246]:
+        - generic [ref=e248]: Claudio
+        - text: 周末的上午，歌还是一首接一首在走。Yellow 刚落，这首就接上了——挺好的搭配，一明一暗。
+      - generic [ref=e251]:
+        - generic [ref=e253]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e256]:
+        - generic [ref=e258]: Claudio
+        - text: 周六上午，刚刚从 Coldplay 的星光里走出来，耳朵还带着一点温热。有些歌是"说不"，但你听得出来，那个"不"字底下压着好多舍不得。黄河水的声音总像是在某个深夜的巷子里，低低地跟自己较劲，MZ毛毡的旋律又刚好把那股倔强调成了一杯温酒。 I Don't。
+      - generic [ref=e261]: "[系统：歌曲已切换到 \"歌.颂\" - 陈奕迅。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e264]: "[系统：下一首歌是 \"Neon Garden\" - HongsunMusic。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e267]:
+        - generic [ref=e269]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e272]:
+        - generic [ref=e274]: Claudio
+        - text: 周五了，过了中午就该慢下来。从刚才那首倔强的"不要"走出来，脑子里突然安静了一截——有些音乐不是在讲故事，是在给你造一个空间，让你自己走进去坐一会儿。
+      - generic [ref=e277]: "[系统：歌曲已切换到 \"Yellow\" - Coldplay。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e280]: "[系统：歌曲已切换到 \"一口\" - 丁世光。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e283]: "[系统：下一首歌是 \"Clara (the night is dark)\" - Fred again..。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e286]: "[系统：歌曲已切换到 \"DOWN BY LAW\" - Killer Mike / CeeLo Green。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e289]: "[系统：下一首歌是 \"My Song\" - Labi Siffre。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e292]:
+        - generic [ref=e294]: Claudio
+        - text: 周六快到中午了，光从窗帘缝里漏进来，有一瞬间你突然想起某个人——不是刻意想的，就是光线刚好把那个画面翻出来了。有些颜色不是眼睛看到的，是心里觉得暖的时候自动浮上来的。 Yellow。
+      - generic [ref=e297]:
+        - generic [ref=e299]: Claudio
+        - text: 周日上午，阳光可能刚好打在桌角上，光线有点懒。从 Coldplay 那片黄色星海里回来，耳朵需要一点更近、更私人的东西——有些声音像是贴着你耳边说的，不用大声，一个字一个字慢慢落下来就够了。 一口。
+      - generic [ref=e302]:
+        - generic [ref=e304]: Claudio
+        - text: 周六的上午，时间不紧不慢地走。Neon Garden 还在播，下一首是 Fred again.. 的——等它到的时候，你可能会想把手机翻过去，闭眼听一会儿。
+      - generic [ref=e307]:
+        - generic [ref=e309]: Claudio
+        - text: 上午的阳光刚好够亮，但有些人唱歌的方式，像是替你把那些夜里没喊出来的话，全都当面讲了一遍。Killer Mike 从亚特兰大的街头一路走到格莱美，他从来不用修辞，每一句都是直接从胸口掏出来的。CeeLo 的声音一进来，那股子旧南方的厚实感就铺满了房间。 DOWN BY LAW。
+      - generic [ref=e312]:
+        - generic [ref=e314]: Claudio
+        - text: 早上十一点多，阳光可能刚好从某个角度切进来，不烈，就是那种让人想摊开手掌的温度。有些歌不需要大道理，它就那么轻声问你一句——你快乐吗，你过得好吗——然后把回答留给你自己。Labi Siffre 唱这首歌的时候，像是替所有不好意思开口的人说了句心里话。 My Song。
+      - generic [ref=e317]: "[系统：歌曲已切换到 \"What Did I Miss?\" - Drake。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e320]: "[系统：下一首歌是 \"N95\" - Kendrick Lamar。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e323]:
+        - generic [ref=e325]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e328]:
+        - generic [ref=e330]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e333]: "[系统：歌曲已切换到 \"爱我还是他\" - 陶喆。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e336]: "[系统：下一首歌是 \"Yellow\" - Sandra Ivette。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e339]:
+        - generic [ref=e341]: Claudio
+        - text: 上午不紧不慢的，这首歌刚好踩在这个节奏上。陶喆的嗓子有种暖色调的丝滑，但唱的偏偏是最让人辗转的事。
+      - generic [ref=e344]:
+        - generic [ref=e346]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e349]: "[系统：歌曲已切换到 \"Bound 2\" - Capra。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e352]: "[系统：下一首歌是 \"Yellow\" - Sandra Ivette。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e355]:
+        - generic [ref=e357]: Claudio
+        - text: 下午刚过十二点，时间像被什么轻轻按了一下暂停键。有些旋律你第一耳朵听到就知道，它不是在讲一个故事，是在讲一个画面——风吹过公路、阳光打在挡风玻璃上、副驾驶空着但你心情不空。Capra 把这首翻唱得有种慵懒的亲密感，像在你客厅里随手弹给你听的。 Bound 2。
+      - generic [ref=e360]:
+        - generic [ref=e362]: Claudio
+        - text: 有时候，一首歌被唱过无数遍之后，反而越来越轻。轻到只剩下那些你不好意思说出口的颜色——不是金黄，不是亮橙，就是那种从窗户缝里漏进来的、快要看不见的黄。Sandra Ivette 的声音把这首歌唱得像是在你枕边，刚好够你一个人听见。 Yellow。
+      - generic [ref=e365]: "[系统：歌曲已切换到 \"Showtime\" - Yeafteryeezyy。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e368]: "[系统：下一首歌是 \"S24\" - JulezJZ。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e371]:
+        - generic [ref=e373]: Claudio
+        - text: 午后的光线刚好不太刺眼，适合让一首歌撑起整个房间的节奏。有些歌一响起来，你不需要知道它在唱什么，身体已经先动了——像幕布拉开之前后台那几秒，所有人都在深呼吸。Yeafteryeezyy 的这首，就是那种你站在原地但心里已经在舞台中央的感觉。 Showtime。
+      - generic [ref=e376]:
+        - generic [ref=e378]: Claudio
+        - text: 有些歌名像一串密码，不解释，你得自己解锁。S24 听起来像是某个深夜在手机备忘录里随手敲下的编号——没有标题，没有注释，但所有的情绪都藏在里面了。JulezJZ 把那种 Ye 体系里长出来的声音，做成了一段很私人的独白。 S24。
+      - generic [ref=e381]: "[系统：歌曲已切换到 \"爱我还是他\" - 陶喆。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e384]: "[系统：歌曲已切换到 \"任我行\" - 陈奕迅。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e387]: "[系统：下一首歌是 \"坠落\" - 蔡健雅。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e390]:
+        - generic [ref=e392]: Claudio
+        - text: 有时候最残忍的问题，不是没有答案，是你问出口的那一秒就知道，答案早就在你心里了。陶喆的声音有一种本事，明明是在逼问，听起来却像在自言自语——午后的安静特别衬这种情绪，不浓不淡，刚好够你想起某个人。 爱我还是他。
+      - generic [ref=e395]:
+        - generic [ref=e397]: Claudio
+        - text: 午后的安静很适合这首歌慢慢铺开。陈奕迅写那种"一个人走在自己路上"的感觉，不悲壮，就是很日常地倔强着。
+      - generic [ref=e400]:
+        - generic [ref=e402]: Claudio
+        - text: 有些歌讲的是坠落，但听起来像漂浮——不是那种失重的恐慌，而是你终于决定不再抓住什么，让风自己决定你去哪。蔡健雅写这种歌的时候，声音里总带着一种清醒的温柔，好像她已经想过很多遍了，才轻轻唱出来。午后的房间，窗帘没拉严，光一格一格地漏进来，刚好配得上这种坦然。 坠落。
+      - generic [ref=e405]: "[系统：歌曲已切换到 \"Yellow\" - Coldplay。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e408]: "[系统：歌曲已切换到 \"I Don't\" - 黄河水Yellow River / MZ毛毡。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e411]: "[系统：下一首歌是 \"小雨\" - 黄龄。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e414]:
+        - generic [ref=e416]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e419]:
+        - generic [ref=e421]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e424]:
+        - generic [ref=e426]: Claudio
+        - text: 外面的阳光再烈，也挡不住有人想在心里下一场小雨。黄龄的声音就是那种——你以为她在唱歌，其实她在你的耳边呼了一口气，所有的字都湿漉漉的，滑过去，你抓不住。午后最适合这种歌，不用用力听，让它自己流过来就好。 小雨。
+      - generic [ref=e429]: "[系统：歌曲已切换到 \"Focus 01\" - Local Demo Audio。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e432]: "[系统：歌曲已切换到 \"Focus 02\" - Local Demo Audio。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e435]: "[系统：歌曲已切换到 \"Calm 01\" - Local Demo Audio。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e438]: "[系统：歌曲已切换到 \"Calm 02\" - Local Demo Audio。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e441]: "[系统：下一首歌是 \"Sleep 01\" - Local Demo Audio。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e444]:
+        - generic [ref=e446]: Claudio
+        - text: 午后的光线正好，不刺眼也不暗，像世界把音量调低了一格。有些声音不需要名字，不需要歌词，它们存在的意义就是陪你把注意力放回自己手边的事。不急，先把呼吸放慢。 Focus 01.
+      - generic [ref=e449]: "[系统：歌曲已切换到 \"下水道蚂蚁\" - 连麻Swimming / JinJiBeWater_隼。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e452]:
+        - generic [ref=e454]: Claudio
+        - text: 下午过半了，有时候你不需要什么特别的东西，就是需要一段声音把时间变慢一点。这种calm的曲子，像是房间自己在呼吸——不打扰你，但你知道它在。 Calm 01。
+      - generic [ref=e457]: "[系统：歌曲已切换到 \"完\" - 陈奕迅。请用 speak 动作说一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，回应用户的状态，最后一句自然引出歌名。2-5句，不要播报腔。]"
+      - generic [ref=e460]:
+        - generic [ref=e462]: Claudio
+        - text: 下午过半了，有时候脑子里什么都装不下，也不想装什么。这种安静不是没话说，是觉得不说话也挺好的。就让这个声音在旁边待着，像窗外那片不会动的云。 Calm 02。
+      - generic [ref=e465]: "[系统：下一首歌是 \"Sins Of The Father\" - Daniel Caesar / Bon Iver。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]"
+      - generic [ref=e468]:
+        - generic [ref=e470]: Claudio
+        - text: 午后的房间，世界好像调低了音量。你已经不需要什么歌来撑气氛了，Focus 系列就是那种——不抢注意力，但悄悄把你裹住的声音。像一张白纸摊开在桌上，笔还没落，但你知道今天能写出点什么。 Focus 02。
+      - generic [ref=e473]:
+        - generic [ref=e475]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e478]:
+        - generic [ref=e480]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e483]:
+        - generic [ref=e485]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e488]:
+        - generic [ref=e490]: Claudio
+        - text: 我懂，你现在不是想认真挑歌，是想让房间先有个合适的气氛。我先帮你找几首贴一点、不会太突兀的。
+      - generic [ref=e527]:
+        - generic [ref=e529]: Claudio
+        - text: 午后的阳光慢慢爬过桌面，你可能什么都没在想，但身体知道这种节奏是对的。有些下午不需要意义，只需要一个声音帮你把时间安顿好。像一杯温水，不烫不凉，刚好。
+      - generic [ref=e533]:
+        - generic [ref=e535]: Claudio
+        - text: Calm 02。
+    - contentinfo [ref=e98]:
+      - generic [ref=e491]:
+        - button "Queue · 5 tracks 收起 ▾" [ref=e492] [cursor=pointer]:
+          - generic [ref=e493]: Queue · 5 tracks
+          - generic [ref=e495]: 收起 ▾
+        - generic [ref=e496]:
+          - button "1 Focus 01 Local Demo Audio" [ref=e497] [cursor=pointer]:
+            - generic [ref=e498]: "1"
+            - generic [ref=e499]:
+              - generic [ref=e500]: Focus 01
+              - generic [ref=e501]: Local Demo Audio
+          - button "2 Focus 02 Local Demo Audio" [ref=e502] [cursor=pointer]:
+            - generic [ref=e503]: "2"
+            - generic [ref=e504]:
+              - generic [ref=e505]: Focus 02
+              - generic [ref=e506]: Local Demo Audio
+          - button "3 Calm 01 Local Demo Audio" [ref=e507] [cursor=pointer]:
+            - generic [ref=e508]: "3"
+            - generic [ref=e509]:
+              - generic [ref=e510]: Calm 01
+              - generic [ref=e511]: Local Demo Audio
+          - button "Now Calm 02 Local Demo Audio" [ref=e512] [cursor=pointer]:
+            - generic [ref=e513]: Now
+            - generic [ref=e514]:
+              - generic [ref=e515]: Calm 02
+              - generic [ref=e516]: Local Demo Audio
+          - button "5 Sleep 01 Local Demo Audio" [ref=e517] [cursor=pointer]:
+            - generic [ref=e518]: "5"
+            - generic [ref=e519]:
+              - generic [ref=e520]: Sleep 01
+              - generic [ref=e521]: Local Demo Audio
+      - generic [ref=e100]:
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - generic [ref=e105]: ON AIR
+            - paragraph [ref=e106]: Calm 02
+            - paragraph [ref=e107]: Local Demo Audio · Local
+          - generic [ref=e108]:
+            - button "Previous track" [ref=e109] [cursor=pointer]: ‹
+            - button "Pause" [ref=e524] [cursor=pointer]:
+              - img [ref=e111]
+            - button "Next track" [active] [ref=e113] [cursor=pointer]: ›
+        - generic [ref=e114]:
+          - generic [ref=e115]: 0:00
+          - generic [ref=e161]: 2:30
+        - generic [ref=e162]:
+          - generic [ref=e163]: Vol
+          - slider "volume" [ref=e164]: "0.53"
+          - generic [ref=e165]: "53"
+      - generic [ref=e166]:
+        - textbox "告诉 Claudio 你现在的状态..." [ref=e167]
+        - button "Send" [disabled] [ref=e168]
+      - paragraph [ref=e523]: "TTS: minimax · NetEase: http://127.0.0.1:3000"

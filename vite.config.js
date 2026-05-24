@@ -88,12 +88,18 @@ function xiaoMusicProxy(env) {
         const username = String(req.headers['x-xiaomusic-username'] || env.XIAOMUSIC_HTTPAUTH_USERNAME || '').trim()
         const password = String(req.headers['x-xiaomusic-password'] || env.XIAOMUSIC_HTTPAUTH_PASSWORD || '')
         const headers = {
-          'Content-Type': req.headers['content-type'] || 'application/json'
+          Accept: 'application/json'
+        }
+        // Only set Content-Type for non-GET requests
+        if (method !== 'GET' && method !== 'HEAD') {
+          headers['Content-Type'] = req.headers['content-type'] || 'application/json'
         }
 
         if (username || password) {
           headers.Authorization = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
         }
+
+        console.log(`[Vite XiaoMusic proxy] ${method} ${targetUrl}`)
 
         const response = await fetch(targetUrl, {
           method,
@@ -102,10 +108,13 @@ function xiaoMusicProxy(env) {
         })
         const text = await response.text()
 
+        console.log(`[Vite XiaoMusic proxy] ${response.status} (${text.length} bytes)`)
+
         res.statusCode = response.status
         res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json')
         res.end(text)
       } catch (error) {
+        console.error(`[Vite XiaoMusic proxy] Error: ${error.message}`)
         res.statusCode = 502
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify({ error: error.message || 'XiaoMusic proxy failed' }))

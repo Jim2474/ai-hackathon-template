@@ -29,7 +29,7 @@ server/
 src/
   App.jsx               # 主应用组件
   components/           # UI 组件
-  services/             # 业务逻辑和 API 客户端
+  services/             # 业务逻辑（含 xiaoMusicService, xiaoPlaybackController）
   data/                 # Mock 数据和本地音频库
   utils/                # 工具函数
 

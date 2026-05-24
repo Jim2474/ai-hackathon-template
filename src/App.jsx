@@ -6,7 +6,8 @@ import NeteaseLoginPanel from './components/NeteaseLoginPanel'
 import GlassPanel from './components/GlassPanel'
 import { GlassSettingsProvider, useGlassSettings } from './components/GlassSettings'
 import GlassSettingsPanel from './components/GlassSettingsPanel'
-import { loadXiaoMusicSettings, saveXiaoMusicSettings, getXiaoMusicDevices } from './services/xiaoMusicService'
+import { loadXiaoMusicSettings, saveXiaoMusicSettings, getXiaoMusicDevices, XIAOMUSIC_PLAYBACK_TARGETS, setXiaoMusicVolume } from './services/xiaoMusicService'
+import { playOnXiao, pauseXiaoPlayback } from './services/xiaoPlaybackController'
 import { loadTtsSettings, saveTtsSettings, testTtsVoice, getTtsSettings } from './services/ttsService'
 
 const NORMAL_VOLUME = 0.7
@@ -304,6 +305,9 @@ export default function App() {
   const transitionAbortRef = useRef(null)
   const progressRef = useRef(null)
   const skipNextTransitionRef = useRef(false)
+  const xiaoTimerRef = useRef(null)
+
+  const isXiaoSpeakerMode = () => xiaoSettings.playbackTarget === XIAOMUSIC_PLAYBACK_TARGETS.speaker && !!xiaoSettings.deviceDid;
 
   const isPlaying = phase === 'playing'
   const isThinking = phase === 'thinking'
@@ -480,6 +484,19 @@ export default function App() {
   }
 
   function startMusic(track) {
+    // 修复 bug：切歌时清空 voice queue，防止旧串场词继续播放
+    voiceQueueRef.current = []
+    if (isVoicePlayingRef.current) {
+      if (window.speechSynthesis) window.speechSynthesis.cancel()
+      if (voiceAudioRef.current) {
+         voiceAudioRef.current.pause()
+         voiceAudioRef.current.src = ''
+      }
+      isVoicePlayingRef.current = false
+      setIsVoicePlaying(false)
+      setActiveVoice(null)
+    }
+
     if (!track?.audioUrl) {
       setError('这首歌暂时没有可播放地址。')
       return
@@ -487,11 +504,50 @@ export default function App() {
 
     transitionAbortRef.current?.abort()
     preloadedTransitionRef.current?.controller?.abort()
+    clearInterval(xiaoTimerRef.current)
 
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.onended = null
       audioRef.current.onerror = null
+    }
+
+    if (isXiaoSpeakerMode()) {
+      currentTrackIdRef.current = track.id
+      setCurrentTrack(track)
+      setTrackTime(0)
+      setTrackDuration(track.duration || FALLBACK_DURATION)
+      setPhase('playing')
+      setError('')
+
+      const duration = track.duration || FALLBACK_DURATION
+      const startTime = Date.now()
+      xiaoTimerRef.current = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000
+        if (elapsed >= duration) {
+          clearInterval(xiaoTimerRef.current)
+          playNextTrack()
+        } else {
+          setTrackTime(elapsed)
+        }
+      }, 1000)
+
+      playOnXiao({
+        settings: xiaoSettings,
+        track,
+        onStatus: (msg, tone, debug) => {
+          setXiaoStatus({ type: tone, message: msg })
+          if (debug) setXiaoDebug(debug)
+        },
+        onDebug: (debug) => setXiaoDebug(debug)
+      }).catch(err => {
+         if (err.name !== 'XiaoPlaybackCancelled') {
+            setError(`小爱播放失败：${err.message}`)
+            clearInterval(xiaoTimerRef.current)
+            setPhase('paused')
+         }
+      })
+      return
     }
 
     const audio = new Audio(track.audioUrl)
@@ -618,6 +674,7 @@ export default function App() {
   }
 
   function enqueueVoice(item) {
+    if (isXiaoSpeakerMode()) return
     if (!item?.text) return
     voiceQueueRef.current.push(item)
     playNextVoice()
@@ -665,6 +722,18 @@ export default function App() {
   }
 
   function togglePlayback() {
+    if (isXiaoSpeakerMode()) {
+       if (phase === 'playing') {
+          pauseXiaoPlayback(xiaoSettings, setXiaoDebug).catch(()=>{})
+          clearInterval(xiaoTimerRef.current)
+          setPhase('paused')
+          sendPlayerControl('pause').catch(() => {})
+       } else {
+          startMusic(currentTrack)
+       }
+       return
+    }
+
     const audio = audioRef.current
     if (!audio && currentTrack) {
       startMusic(currentTrack)
@@ -686,6 +755,11 @@ export default function App() {
   function changeVolume(value) {
     const nextVolume = Number(value)
     setVolume(nextVolume)
+    if (isXiaoSpeakerMode()) {
+       setXiaoMusicVolume(xiaoSettings, xiaoSettings.deviceDid, nextVolume * 100).catch(()=>{})
+       sendPlayerControl('volume', nextVolume).catch(() => {})
+       return
+    }
     if (audioRef.current && !isVoicePlayingRef.current) {
       audioRef.current.volume = nextVolume
     }
@@ -783,17 +857,23 @@ export default function App() {
           handleXiaoSettingsChange({ deviceDid: devices[0].did, deviceName: devices[0].name })
         }
       } else {
-        setXiaoStatus({ type: 'error', message: '未检测到设备，请检查地址和网络' })
+        setXiaoStatus({ type: 'error', message: '已连接到 xiaomusic 但设备列表为空。请检查小米账号登录状态。' })
       }
     } catch (err) {
-      setXiaoStatus({ type: 'error', message: err.message || '检测失败' })
+      const msg = err.message || '检测失败'
+      console.error('[XiaoMusic] Device detection failed:', err)
+      if (msg.includes('proxy error') || msg.includes('fetch') || msg.includes('ECONNREFUSED')) {
+        setXiaoStatus({ type: 'error', message: `无法连接到 xiaomusic (${xiaoSettings.baseUrl})` })
+      } else {
+        setXiaoStatus({ type: 'error', message: msg })
+      }
     } finally {
       setXiaoBusy(false)
     }
   }
 
   function handleXiaoSpeakerToggle(enabled) {
-    handleXiaoSettingsChange({ playbackTarget: enabled ? 'speaker' : 'browser' })
+    handleXiaoSettingsChange({ playbackTarget: enabled ? XIAOMUSIC_PLAYBACK_TARGETS.speaker : XIAOMUSIC_PLAYBACK_TARGETS.browser })
   }
 
   async function sendMessage(event) {

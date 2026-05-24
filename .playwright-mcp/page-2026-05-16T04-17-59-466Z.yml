@@ -1,0 +1,44 @@
+- generic [ref=e2]:
+  - heading "网易云音乐 API" [level=1] [ref=e3]: 网易云音乐 API
+  - paragraph [ref=e4]: 当你看到这个页面时，这个服务已经成功跑起来了~
+  - paragraph [ref=e5]: http://localhost:3000/
+  - link "查看文档" [ref=e6] [cursor=pointer]:
+    - /url: /docs
+  - heading "例子:" [level=2] [ref=e7]
+  - list [ref=e8]:
+    - listitem [ref=e9]:
+      - generic [ref=e10]: "1."
+      - link "搜索" [ref=e11] [cursor=pointer]:
+        - /url: ./search?keywords=海阔天空
+    - listitem [ref=e12]:
+      - generic [ref=e13]: "2."
+      - link "歌曲评论" [ref=e14] [cursor=pointer]:
+        - /url: ./comment/music?id=186016&limit=1
+    - listitem [ref=e15]:
+      - generic [ref=e16]: "3."
+      - link "电台节目" [ref=e17] [cursor=pointer]:
+        - /url: ./dj/program?rid=336355127
+    - listitem [ref=e18]:
+      - generic [ref=e19]: "4."
+      - link "二维码登录" [ref=e20] [cursor=pointer]:
+        - /url: ./qrlogin.html
+    - listitem [ref=e21]:
+      - generic [ref=e22]: "5."
+      - link "听歌识曲" [ref=e23] [cursor=pointer]:
+        - /url: ./audio_match_demo/index.html
+    - listitem [ref=e24]:
+      - generic [ref=e25]: "6."
+      - link "云盘上传" [ref=e26] [cursor=pointer]:
+        - /url: ./cloud.html
+    - listitem [ref=e27]:
+      - generic [ref=e28]: "7."
+      - link "eapi 参数/返回值解析" [ref=e29] [cursor=pointer]:
+        - /url: ./eapi_decrypt.html
+    - listitem [ref=e30]:
+      - generic [ref=e31]: "8."
+      - link "API 调试界面" [ref=e32] [cursor=pointer]:
+        - /url: ./api.html
+    - listitem [ref=e33]:
+      - generic [ref=e34]: "9."
+      - link "歌单导入工具" [ref=e35] [cursor=pointer]:
+        - /url: ./playlist_import.html

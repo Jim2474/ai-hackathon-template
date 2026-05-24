@@ -59,7 +59,7 @@ export function normalizeXiaoMusicSettings(settings = {}) {
     deviceDid: safeText(rawSettings.deviceDid),
     deviceName: safeText(rawSettings.deviceName),
     playbackTarget,
-    speakDjBeforeTrack: rawSettings.speakDjBeforeTrack !== false,
+    speakDjBeforeTrack: rawSettings.speakDjBeforeTrack === true,
     autoPushOnTrackChange: rawSettings.autoPushOnTrackChange !== false,
     ttsLeadMs,
     volume: Math.max(0, Math.min(100, Math.round(Number(rawSettings.volume ?? DEFAULT_XIAOMUSIC_SETTINGS.volume)))),
@@ -131,12 +131,22 @@ export function normalizeXiaoMusicDevice(device = {}) {
 
 export async function getXiaoMusicDevices(settings) {
   const data = await requestXiaoMusic('/getsetting?need_device_list=true', { settings })
+  console.log('[XiaoMusic] /getsetting response keys:', data && typeof data === 'object' ? Object.keys(data) : typeof data)
+
+  // Try multiple possible field names for device list
   const devices = Array.isArray(data?.device_list)
     ? data.device_list
     : Array.isArray(data?.devices)
       ? data.devices
-      : []
-  return devices.map(normalizeXiaoMusicDevice).filter(device => device.did)
+      : Array.isArray(data?.mi_did_list)
+        ? data.mi_did_list
+        : []
+
+  console.log('[XiaoMusic] Raw device_list:', JSON.stringify(devices).slice(0, 500))
+
+  const normalized = devices.map(normalizeXiaoMusicDevice).filter(device => device.did)
+  console.log('[XiaoMusic] Normalized devices:', normalized.length, normalized.map(d => `${d.name}(${d.did})`))
+  return normalized
 }
 
 export async function getXiaoMusicServerSettings(settings) {

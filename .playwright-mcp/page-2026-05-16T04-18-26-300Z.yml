@@ -1,0 +1,51 @@
+- generic [ref=e3]:
+  - button "液态玻璃设置" [ref=e4] [cursor=pointer]: ⚙
+  - generic [ref=e7]:
+    - banner [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - paragraph [ref=e12]: Claudio
+            - generic [ref=e13]: radio
+          - generic [ref=e16]: Ready · 正在连接 Claudio 后端...
+        - generic [ref=e17]: 12:18 PM
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - paragraph [ref=e22]: Claudio is listening
+          - paragraph [ref=e23]: Tell Claudio how you feel
+        - button "我的网易云" [ref=e24] [cursor=pointer]
+    - main [ref=e80]:
+      - generic [ref=e83]:
+        - generic [ref=e85]: Claudio
+        - text: 我是 Claudio。你不用想好要听什么，直接跟我说你现在的状态就行。
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - paragraph [ref=e92]: 网易云未登录
+            - paragraph [ref=e93]: 未登录也能搜索免费歌曲；会员完整版需要登录态。
+          - button "扫码登录" [ref=e94] [cursor=pointer]
+        - generic [ref=e95]:
+          - textbox "可直接粘贴 MUSIC_U 值" [ref=e96]
+          - button "导入" [disabled] [ref=e97]
+    - contentinfo [ref=e98]:
+      - generic [ref=e100]:
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - generic [ref=e105]: READY
+            - paragraph [ref=e106]: Claudio is waiting
+            - paragraph [ref=e107]: Tell Claudio how you feel
+          - generic [ref=e108]:
+            - button "Previous track" [ref=e109] [cursor=pointer]: ‹
+            - button "Play" [ref=e110] [cursor=pointer]:
+              - img [ref=e111]
+            - button "Next track" [ref=e113] [cursor=pointer]: ›
+        - generic [ref=e114]:
+          - generic [ref=e115]: 0:00
+          - generic [ref=e161]: 3:00
+        - generic [ref=e162]:
+          - generic [ref=e163]: Vol
+          - slider "volume" [ref=e164]: "0.7"
+          - generic [ref=e165]: "70"
+      - generic [ref=e166]:
+        - textbox "告诉 Claudio 你现在的状态..." [ref=e167]
+        - button "Send" [disabled] [ref=e168]

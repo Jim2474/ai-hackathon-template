@@ -602,21 +602,27 @@ async function requestNetease(pathname, params = {}) {
 async function proxyXiaoMusicRequest(req, res, url) {
   const basePath = url.pathname.replace(/^\/api\/xiaomusic/, '') || '/'
   const baseUrl = req.headers['x-xiaomusic-base-url'] || 'http://127.0.0.1:58090'
-  const targetUrl = new URL(`${basePath}${url.search}`, baseUrl)
+  const targetUrl = new URL(`${basePath}`, baseUrl)
+  // Append query params from the original URL (only once)
   url.searchParams.forEach((value, key) => {
-    targetUrl.searchParams.append(key, value)
+    targetUrl.searchParams.set(key, value)
   })
 
   const method = req.method || 'GET'
   const headers = {
-    Accept: 'application/json',
-    'Content-Type': req.headers['content-type'] || 'application/json'
+    Accept: 'application/json'
+  }
+  // Only set Content-Type for non-GET requests to avoid confusing upstream servers
+  if (method !== 'GET' && method !== 'HEAD') {
+    headers['Content-Type'] = req.headers['content-type'] || 'application/json'
   }
   const username = req.headers['x-xiaomusic-username'] || ''
   const password = req.headers['x-xiaomusic-password'] || ''
   if (username || password) {
     headers['Authorization'] = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
   }
+
+  console.log(`[XiaoMusic proxy] ${method} ${targetUrl}`)
 
   try {
     const response = await fetch(targetUrl, {
@@ -625,10 +631,13 @@ async function proxyXiaoMusicRequest(req, res, url) {
       body: method === 'GET' || method === 'HEAD' ? undefined : await readBody(req)
     })
     const contentType = response.headers.get('content-type') || 'application/json'
-    res.writeHead(response.status, { 'Content-Type': contentType })
     const body = await response.text()
+    console.log(`[XiaoMusic proxy] ${response.status} ${contentType} (${body.length} bytes)`)
+    setCors(res)
+    res.writeHead(response.status, { 'Content-Type': contentType })
     res.end(body)
   } catch (error) {
+    console.error(`[XiaoMusic proxy] Error: ${error.message}`)
     jsonResponse(res, 502, { error: `XiaoMusic proxy error: ${error.message}` })
   }
 }
