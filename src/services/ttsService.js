@@ -85,13 +85,13 @@ export function loadTtsSettings() {
   try {
     const raw = localStorage.getItem(TTS_SETTINGS_KEY)
     if (raw) runtimeTtsSettings = { ...DEFAULT_TTS_SETTINGS, ...JSON.parse(raw) }
-  } catch {}
+  } catch { /* ignore */ }
   return { ...runtimeTtsSettings }
 }
 
 export function saveTtsSettings(partial) {
   runtimeTtsSettings = { ...runtimeTtsSettings, ...partial }
-  try { localStorage.setItem(TTS_SETTINGS_KEY, JSON.stringify(runtimeTtsSettings)) } catch {}
+  try { localStorage.setItem(TTS_SETTINGS_KEY, JSON.stringify(runtimeTtsSettings)) } catch { /* ignore */ }
   return { ...runtimeTtsSettings }
 }
 

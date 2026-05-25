@@ -177,12 +177,12 @@ function buildAgentPrompt(userMessage, ttsSettings) {
   let tasteText = ''
   try {
     tasteText = readFileSync(path.join(runtimeDir, 'taste.md'), 'utf8').trim()
-  } catch {}
+  } catch { /* ignore */ }
 
   let libraryText = ''
   try {
     libraryText = readFileSync(libraryPath, 'utf8').trim()
-  } catch {}
+  } catch { /* ignore */ }
 
   const now = new Date()
   const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
@@ -458,7 +458,7 @@ function runClaude(userMessage, onText, ttsSettings) {
 function popCompleteSentences(pending) {
   const sentences = []
   let rest = pending
-  const regex = /(.+?[。！？!?；;])(\s|$)/
+  const regex = /([^。！？!?；;\n]+(?:[。！？!?；;]|\n+))/
   let match = rest.match(regex)
   while (match) {
     const sentence = match[1].trim()
@@ -750,7 +750,7 @@ async function syncMusicLibrary(cookie) {
             songs.push(formatSong(song))
           }
         }
-      } catch {}
+      } catch { /* ignore */ }
     }
     return songs
   }
@@ -760,7 +760,7 @@ async function syncMusicLibrary(cookie) {
   try {
     const accountData = await requestNetease('/user/account', { cookie })
     userId = accountData?.account?.id || accountData?.profile?.userId || ''
-  } catch {}
+  } catch { /* ignore */ }
 
   // Fetch playlists and their songs
   try {
@@ -792,7 +792,7 @@ async function syncMusicLibrary(cookie) {
             })
             lines.push('```\n')
           }
-        } catch {}
+        } catch { /* ignore */ }
       }
     }
   } catch (e) {
@@ -852,7 +852,7 @@ async function loadUserFavorites(cookie, count = 5) {
         coverUrl: coverUrl(song),
         raw: song
       })
-    } catch {}
+    } catch { /* ignore */ }
   }
 
   if (tracks.length === 0) throw new Error('收藏歌曲暂时拿不到播放地址')
@@ -867,6 +867,15 @@ async function fallbackLocalTracks(count = 5) {
     sourceType: 'local',
     source: 'Local Demo'
   }))
+}
+
+function appendToLastAssistantMessage(text) {
+  if (!stateCache || !Array.isArray(stateCache.messages) || stateCache.messages.length === 0) return
+  const lastMsg = stateCache.messages[stateCache.messages.length - 1]
+  if (lastMsg && lastMsg.role === 'assistant') {
+    const prev = (lastMsg.text || '').trimEnd()
+    lastMsg.text = prev ? `${prev}\n${text}` : text
+  }
 }
 
 async function executeActions(actions, context, res) {
@@ -905,20 +914,54 @@ async function executeActions(actions, context, res) {
       if (track) {
         const text = `这首是 ${track.artist} 的《${track.title}》。我把它放在这里，是想让现在的气氛继续贴着你，不突然用力。`
         sseSend(res, 'assistant_delta', { text })
-        const speech = await createSpeech(text, context.ttsSettings || {})
-        sseSend(res, 'sentence_ready', speech)
+        appendToLastAssistantMessage(text)
+        try {
+          const speech = await createSpeech(text, context.ttsSettings || {})
+          sseSend(res, 'sentence_ready', { ...speech, text })
+        } catch (err) {
+          sseSend(res, 'sentence_ready', { text, audioUrl: '', fallback: true, error: err.message })
+        }
       }
       continue
     }
     if (type === 'speak' && action.text) {
-      // Only send delta for UI; TTS is handled by streaming text
-      sseSend(res, 'assistant_delta', { text: action.text })
+      const cleaned = action.text.replace(/\[系统：[^\]]*\]/g, '').trim()
+      if (!cleaned) continue
+
+      // Split the speak text into sentences and filter out duplicates
+      const { sentences, rest } = popCompleteSentences(cleaned)
+      const allSentences = [...sentences]
+      if (rest.trim()) allSentences.push(rest.trim())
+
+      const remainingSentences = allSentences.filter(sentence => {
+        const normalized = sentence.replace(/\s+/g, '').toLowerCase()
+        if (context.spokenTexts?.has(normalized)) {
+          return false
+        }
+        context.spokenTexts?.add(normalized)
+        return true
+      })
+
+      const textToSpeak = remainingSentences.join('').trim()
+      if (!textToSpeak) continue
+
+      sseSend(res, 'assistant_delta', { text: textToSpeak })
+      appendToLastAssistantMessage(textToSpeak)
+
+      try {
+        const speech = await createSpeech(textToSpeak, context.ttsSettings || {})
+        sseSend(res, 'sentence_ready', { ...speech, text: textToSpeak })
+      } catch (err) {
+        sseSend(res, 'sentence_ready', { text: textToSpeak, audioUrl: '', fallback: true, error: err.message })
+      }
       continue
     }
     if (type === 'load_favorites') {
       const cookie = context.neteaseCookie || stateCache.neteaseCookie || ''
       if (!cookie) {
-        sseSend(res, 'assistant_delta', { text: '（需要先登录网易云才能播放收藏歌曲。）' })
+        const warning = '（需要先登录网易云才能播放收藏歌曲。）'
+        sseSend(res, 'assistant_delta', { text: warning })
+        appendToLastAssistantMessage(warning)
         continue
       }
       const count = Math.max(1, Math.min(12, Number(action.count || 5)))
