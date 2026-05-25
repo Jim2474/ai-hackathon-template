@@ -60,7 +60,7 @@ const plans = [
   }
 ]
 
-export function generatePlan(input) {
+export function generatePlan(_input) {
   const randomIndex = Math.floor(Math.random() * plans.length)
   return plans[randomIndex]
 }

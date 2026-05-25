@@ -78,7 +78,7 @@ function parseJSONSafely(content) {
   
   try {
     return JSON.parse(cleanedContent);
-  } catch (e) {
+  } catch (_e) {
     try {
       const firstBrace = cleanedContent.indexOf('{');
       const lastBrace = cleanedContent.lastIndexOf('}');

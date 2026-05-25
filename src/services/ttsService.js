@@ -202,7 +202,7 @@ const speakWithBrowser = async (text, options = {}) => {
 };
 
 // Fish Audio TTS（预留，占位实现）
-const speakWithFishAudio = async (text, options = {}) => {
+const speakWithFishAudio = async (text, _options = {}) => {
   try {
     const apiKey = import.meta.env.VITE_FISH_AUDIO_API_KEY;
     const voiceId = import.meta.env.VITE_FISH_AUDIO_VOICE_ID || 'fish-voice-01';
