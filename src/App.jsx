@@ -306,6 +306,7 @@ export default function App() {
   const progressRef = useRef(null)
   const skipNextTransitionRef = useRef(false)
   const xiaoTimerRef = useRef(null)
+  const preloadTriggeredRef = useRef(false)
 
   const isXiaoSpeakerMode = () => xiaoSettings.playbackTarget === XIAOMUSIC_PLAYBACK_TARGETS.speaker && !!xiaoSettings.deviceDid;
 
@@ -380,7 +381,20 @@ export default function App() {
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return undefined
-    const tick = () => setTrackTime(audio.currentTime || 0)
+    const tick = () => {
+      const t = audio.currentTime || 0
+      setTrackTime(t)
+      // Trigger preload when approaching end of song
+      const dur = Number.isFinite(audio.duration) ? audio.duration : 0
+      if (dur > 0 && !preloadTriggeredRef.current) {
+        const remaining = dur - t
+        const shouldPreload = dur > 60 ? (t / dur >= 0.8) : (remaining <= 15 || t / dur >= 0.5)
+        if (shouldPreload) {
+          preloadTriggeredRef.current = true
+          preloadNextTransition()
+        }
+      }
+    }
     const meta = () => setTrackDuration(Number.isFinite(audio.duration) ? audio.duration : FALLBACK_DURATION)
     audio.addEventListener('timeupdate', tick)
     audio.addEventListener('loadedmetadata', meta)
@@ -388,6 +402,7 @@ export default function App() {
       audio.removeEventListener('timeupdate', tick)
       audio.removeEventListener('loadedmetadata', meta)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack])
 
   function filterSystemInstruction(text) {
@@ -461,10 +476,13 @@ export default function App() {
     const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % q.length : 0
     const nextTrack = q[nextIndex]
     if (!nextTrack) return
+    // Don't preload the same track twice
+    if (preloadedTransitionRef.current?.track?.id === nextTrack.id) return
 
     preloadedTransitionRef.current?.controller?.abort()
     const controller = new AbortController()
-    preloadedTransitionRef.current = { track: nextTrack, controller }
+    const readyItems = []
+    preloadedTransitionRef.current = { track: nextTrack, controller, readyItems }
 
     streamChatDjMessage(
       `[系统：下一首歌是 "${nextTrack.title}" - ${nextTrack.artist || '未知'}。请提前准备好一段串场词，风格像深夜电台主播在听众耳边轻声说话：讲讲这首歌的故事或画面感，最后一句自然引出歌名。2-5句，用 speak 动作输出。]`,
@@ -476,7 +494,7 @@ export default function App() {
           if (event === 'sentence_ready' && data?.text) {
             const cleaned = data.text.replace(/\[系统：[^\]]*\]/g, '').trim()
             if (!cleaned) return
-            preloadedTransitionRef.current = { ...preloadedTransitionRef.current, ready: { ...data, text: cleaned } }
+            readyItems.push({ ...data, text: cleaned })
           }
         }
       }
@@ -514,6 +532,7 @@ export default function App() {
 
     if (isXiaoSpeakerMode()) {
       currentTrackIdRef.current = track.id
+      preloadTriggeredRef.current = false
       setCurrentTrack(track)
       setTrackTime(0)
       setTrackDuration(track.duration || FALLBACK_DURATION)
@@ -529,6 +548,15 @@ export default function App() {
           playNextTrack()
         } else {
           setTrackTime(elapsed)
+          // Trigger preload when approaching end of song (xiaomusic mode)
+          if (!preloadTriggeredRef.current) {
+            const remaining = duration - elapsed
+            const shouldPreload = duration > 60 ? (elapsed / duration >= 0.8) : (remaining <= 15 || elapsed / duration >= 0.5)
+            if (shouldPreload) {
+              preloadTriggeredRef.current = true
+              preloadNextTransition()
+            }
+          }
         }
       }, 1000)
 
@@ -554,6 +582,7 @@ export default function App() {
     audio.volume = isVoicePlayingRef.current ? DUCK_VOLUME : volume
     audioRef.current = audio
     currentTrackIdRef.current = track.id
+    preloadTriggeredRef.current = false
     setCurrentTrack(track)
     setTrackTime(0)
     setTrackDuration(track.duration || FALLBACK_DURATION)
@@ -586,18 +615,18 @@ export default function App() {
           const preloaded = preloadedTransitionRef.current
           if (skipTransition) {
             preloadedTransitionRef.current = null
-          } else if (preloaded?.ready && preloaded.track?.id === track.id) {
-            const cleaned = preloaded.ready.text.replace(/\[系统：[^\]]*\]/g, '').trim()
-            if (cleaned) {
-              setMessages(prev => [...prev, makeMessage('assistant', cleaned)])
-              enqueueVoice({ ...preloaded.ready, text: cleaned })
+          } else if (preloaded?.readyItems?.length > 0 && preloaded.track?.id === track.id) {
+            for (const item of preloaded.readyItems) {
+              const cleaned = item.text.replace(/\[系统：[^\]]*\]/g, '').trim()
+              if (cleaned) {
+                setMessages(prev => [...prev, makeMessage('assistant', cleaned)])
+                enqueueVoice({ ...item, text: cleaned })
+              }
             }
             preloadedTransitionRef.current = null
           } else {
             requestTransition(track)
           }
-
-          setTimeout(() => preloadNextTransition(), 2000)
         })
         .catch(() => {
           if (audioRef.current !== audio) return
