@@ -942,17 +942,21 @@ async function executeActions(actions, context, res) {
         return true
       })
 
-      const textToSpeak = remainingSentences.join('').trim()
-      if (!textToSpeak) continue
+      if (remainingSentences.length === 0) continue
 
-      sseSend(res, 'assistant_delta', { text: textToSpeak })
-      appendToLastAssistantMessage(textToSpeak)
+      // Send full text as assistant delta for UI display
+      const fullText = remainingSentences.join('')
+      sseSend(res, 'assistant_delta', { text: fullText })
+      appendToLastAssistantMessage(fullText)
 
-      try {
-        const speech = await createSpeech(textToSpeak, context.ttsSettings || {})
-        sseSend(res, 'sentence_ready', { ...speech, text: textToSpeak })
-      } catch (err) {
-        sseSend(res, 'sentence_ready', { text: textToSpeak, audioUrl: '', fallback: true, error: err.message })
+      // Generate TTS per-sentence for lower latency (first sentence plays while others generate)
+      for (const sentence of remainingSentences) {
+        try {
+          const speech = await createSpeech(sentence, context.ttsSettings || {})
+          sseSend(res, 'sentence_ready', { ...speech, text: sentence })
+        } catch (err) {
+          sseSend(res, 'sentence_ready', { text: sentence, audioUrl: '', fallback: true, error: err.message })
+        }
       }
       continue
     }
@@ -1274,6 +1278,25 @@ const server = http.createServer(async (req, res) => {
   }
 })
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Claudio Chat DJ backend listening on http://127.0.0.1:${PORT}`)
+  // Cleanup old TTS cache files (>1 hour) on startup
+  try {
+    await ensureRuntime()
+    const files = await fs.readdir(ttsDir)
+    const now = Date.now()
+    const maxAge = 60 * 60 * 1000 // 1 hour
+    let cleaned = 0
+    for (const file of files) {
+      try {
+        const filePath = path.join(ttsDir, file)
+        const stat = await fs.stat(filePath)
+        if (now - stat.mtimeMs > maxAge) {
+          await fs.unlink(filePath)
+          cleaned++
+        }
+      } catch { /* ignore individual file errors */ }
+    }
+    if (cleaned > 0) console.log(`Cleaned ${cleaned} old TTS cache files`)
+  } catch { /* ignore cleanup errors */ }
 })
