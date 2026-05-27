@@ -1248,8 +1248,10 @@ export default function App() {
 
               {serverConfig && (
                 <div className="mt-1 flex items-center justify-between px-1">
-                  <p className="truncate text-[10px]" style={{ color: '#5f6470' }}>
-                    TTS: {serverConfig.ttsConfigured ? `${serverConfig.ttsProvider || 'tts'}` : 'browser'} · NetEase: {serverConfig.neteaseBaseUrl || 'local'}
+                  <p className="truncate text-[10px]" style={{ color: serverConfig.ttsError ? '#be123c' : '#5f6470' }}>
+                    TTS: {serverConfig.ttsError
+                      ? `⚠ 降级浏览器朗读 (${serverConfig.ttsError})`
+                      : serverConfig.ttsConfigured ? `${serverConfig.ttsProvider || 'tts'}` : 'browser'} · NetEase: {serverConfig.neteaseBaseUrl || 'local'}
                   </p>
                 </div>
               )}

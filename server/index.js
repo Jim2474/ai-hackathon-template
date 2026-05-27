@@ -27,6 +27,15 @@ const MINIMAX_TTS_API_KEY = String(process.env.MINIMAX_TTS_API_KEY || process.en
 const MINIMAX_TTS_MODEL = String(process.env.MINIMAX_TTS_MODEL || process.env.VITE_MINIMAX_TTS_MODEL || 'speech-2.8-turbo').trim()
 const MINIMAX_TTS_VOICE = String(process.env.MINIMAX_TTS_VOICE || process.env.VITE_MINIMAX_TTS_VOICE_ID || 'Chinese (Mandarin)_Wise_Women').trim()
 
+const MIMO_TTS_BASE_URL = cleanBaseUrl(process.env.MIMO_TTS_BASE_URL || process.env.VITE_MIMO_TTS_BASE_URL || 'https://api.xiaomimimo.com/v1')
+const rawMimoKey = String(process.env.MIMO_TTS_API_KEY || process.env.VITE_MIMO_TTS_API_KEY || '').trim()
+const MIMO_TTS_API_KEY = rawMimoKey.replace(/^mimo\s+/i, '')
+const MIMO_TTS_MODEL = String(process.env.MIMO_TTS_MODEL || process.env.VITE_MIMO_TTS_MODEL || 'mimo-v2.5-tts').trim()
+const MIMO_TTS_VOICE = String(process.env.MIMO_TTS_VOICE || process.env.VITE_MIMO_TTS_VOICE || 'mimo_default').trim()
+
+// Track persistent TTS failures (e.g. insufficient balance) to avoid repeated failed API calls
+let ttsDisabledReason = ''
+
 const DEFAULT_STATE = {
   summary: '',
   messages: [
@@ -139,15 +148,21 @@ async function saveState() {
 }
 
 function publicState() {
+  const isTtsConfigured = Boolean(MIMO_TTS_API_KEY || TTS_API_KEY || MINIMAX_TTS_API_KEY) && !ttsDisabledReason;
+  const ttsProvider = MIMO_TTS_API_KEY ? 'mimo' : TTS_API_KEY ? 'openai-compatible' : MINIMAX_TTS_API_KEY ? 'minimax' : 'browser-speech';
+  const ttsModel = MIMO_TTS_API_KEY ? MIMO_TTS_MODEL : TTS_API_KEY ? TTS_MODEL : MINIMAX_TTS_MODEL;
+  const ttsVoice = MIMO_TTS_API_KEY ? MIMO_TTS_VOICE : TTS_API_KEY ? TTS_VOICE : MINIMAX_TTS_VOICE;
+
   return {
     ...stateCache,
     config: {
       claudeBin: CLAUDE_BIN,
       neteaseBaseUrl: NETEASE_BASE_URL,
-      ttsConfigured: Boolean(TTS_API_KEY || MINIMAX_TTS_API_KEY),
-      ttsProvider: TTS_API_KEY ? 'openai-compatible' : MINIMAX_TTS_API_KEY ? 'minimax' : 'browser-speech',
-      ttsModel: TTS_API_KEY ? TTS_MODEL : MINIMAX_TTS_MODEL,
-      ttsVoice: TTS_API_KEY ? TTS_VOICE : MINIMAX_TTS_VOICE
+      ttsConfigured: isTtsConfigured,
+      ttsProvider,
+      ttsModel,
+      ttsVoice,
+      ttsError: ttsDisabledReason || ''
     }
   }
 }
@@ -472,6 +487,15 @@ function popCompleteSentences(pending) {
 async function createSpeech(text, overrides = {}) {
   const cleanText = String(text || '').trim()
   if (!cleanText) return { text: cleanText, audioUrl: '', fallback: true }
+
+  // Skip API call if a persistent failure was detected (e.g. insufficient balance)
+  if (ttsDisabledReason) {
+    return { text: cleanText, audioUrl: '', fallback: true, error: ttsDisabledReason }
+  }
+
+  if (MIMO_TTS_API_KEY) {
+    return createMimoSpeech(cleanText, overrides)
+  }
   if (TTS_API_KEY) {
     return createOpenAiCompatibleSpeech(cleanText)
   }
@@ -479,7 +503,65 @@ async function createSpeech(text, overrides = {}) {
     return createMiniMaxSpeech(cleanText, overrides)
   }
 
-  return { text: cleanText, audioUrl: '', fallback: true, error: 'TTS_API_KEY or MINIMAX_TTS_API_KEY is not configured' }
+  return { text: cleanText, audioUrl: '', fallback: true, error: 'TTS_API_KEY, MINIMAX_TTS_API_KEY or MIMO_TTS_API_KEY is not configured' }
+}
+
+async function createMimoSpeech(cleanText, overrides = {}) {
+  const voice = String(overrides.voice || MIMO_TTS_VOICE).trim()
+
+  const response = await fetch(`${MIMO_TTS_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': MIMO_TTS_API_KEY,
+      'Authorization': `Bearer ${MIMO_TTS_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: MIMO_TTS_MODEL,
+      messages: [
+        {
+          role: 'assistant',
+          content: cleanText
+        }
+      ],
+      audio: {
+        format: 'mp3',
+        voice: voice
+      }
+    })
+  })
+
+  if (!response.ok) {
+    const errorMsg = await response.text().catch(() => '') || `Mimo TTS failed ${response.status}`
+    console.warn('[TTS] Mimo API error:', errorMsg)
+    if (/insufficient balance|quota|expired|invalid api key/i.test(errorMsg)) {
+      ttsDisabledReason = `Mimo TTS 不可用: ${errorMsg}`
+      console.warn('[TTS] Disabling Mimo TTS due to persistent error:', errorMsg)
+    }
+    return { text: cleanText, audioUrl: '', fallback: true, error: errorMsg }
+  }
+
+  const data = await response.json().catch(() => null)
+  const audioBase64 = data?.choices?.[0]?.message?.audio?.data
+
+  if (!audioBase64) {
+    const errorMsg = 'Mimo API returned no audio data in choices[0].message.audio.data'
+    console.warn('[TTS] Mimo API error:', errorMsg, data)
+    return { text: cleanText, audioUrl: '', fallback: true, error: errorMsg }
+  }
+
+  const audio = Buffer.from(audioBase64, 'base64')
+  await ensureRuntime()
+  const id = `${Date.now()}-${randomUUID()}.mp3`
+  await fs.writeFile(path.join(ttsDir, id), audio)
+  return {
+    text: cleanText,
+    id,
+    audioUrl: `/api/tts/${encodeURIComponent(id)}`,
+    bytes: audio.length,
+    fallback: false,
+    provider: 'mimo'
+  }
 }
 
 async function createOpenAiCompatibleSpeech(cleanText) {
@@ -558,13 +640,22 @@ async function createMiniMaxSpeech(cleanText, overrides = {}) {
 
   const responseText = await response.text()
   if (!response.ok) {
-    return { text: cleanText, audioUrl: '', fallback: true, error: responseText || `MiniMax TTS failed ${response.status}` }
+    const errorMsg = responseText || `MiniMax TTS failed ${response.status}`
+    console.warn('[TTS] MiniMax API error:', errorMsg)
+    return { text: cleanText, audioUrl: '', fallback: true, error: errorMsg }
   }
 
   const data = JSON.parse(responseText)
   const statusCode = data?.base_resp?.status_code
   if (statusCode !== undefined && statusCode !== 0) {
-    return { text: cleanText, audioUrl: '', fallback: true, error: data?.base_resp?.status_msg || `MiniMax TTS error ${statusCode}` }
+    const errorMsg = data?.base_resp?.status_msg || `MiniMax TTS error ${statusCode}`
+    console.warn('[TTS] MiniMax API error:', errorMsg)
+    // Cache persistent failures to avoid repeated failed calls
+    if (/insufficient balance|quota|expired/i.test(errorMsg)) {
+      ttsDisabledReason = `MiniMax TTS 不可用: ${errorMsg}`
+      console.warn('[TTS] Disabling MiniMax TTS due to persistent error:', errorMsg)
+    }
+    return { text: cleanText, audioUrl: '', fallback: true, error: errorMsg }
   }
 
   const audio = audioHexToBuffer(data?.data?.audio)
